@@ -8,6 +8,10 @@
 
 extern std::map<PieceType, int> Piece_Value;
 
+int InitialPiecesNumber[8] = {
+    1, 2, 2, 2, 2, 2, 5
+};
+
 Color is_endgame(Position pos);
 
 int pieces_score(const Position &pos, Board pieces_location);

@@ -50,6 +50,21 @@ int main()
     /* read input board state */
     while (std::getline(std::cin, line)) {
         Position pos(line);
-        debug << CDCEvaluate::calculate_score(pos) << std::endl;
+        ACDC agent(pos.due_up(), 0);
+        debug << " output pos:\n";
+        debug << pos <<std::endl;
+
+        MoveList<> nx_moves(pos);
+
+        debug << "all moves:" << nx_moves.size() <<std::endl;
+        debug <<"red pieces:" << pos.count(Red) <<", black count:" << pos.count(Black) <<'\n';
+        for(int i=0; i<nx_moves.size(); i++){
+            debug << nx_moves[i];
+            debug <<"\t" << nx_moves[i].from() << '/' << nx_moves[i].to() << '\n';
+        }
+
+        debug << "static evaluation:"<< CDCEvaluate::calculate_score(pos) << std::endl;
+        debug << "Negamax leaf evaluation:" << agent.Negamax(pos, 0, 30) <<std::endl;
+
     }
 }

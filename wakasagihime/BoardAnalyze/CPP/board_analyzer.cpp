@@ -118,7 +118,8 @@ std::map<PieceType, int> Piece_Value = {
     {Chariot, 5},
     {Horse, 3},
     {Cannon, 9},
-    {Soldier, 1}
+    {Soldier, 1},
+    {Hidden, 100}
 };
 
 int pieces_score(const Position &pos, Board pieces_location){

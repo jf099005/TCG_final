@@ -1,18 +1,19 @@
 #include"AB_agent.h"
 
 void MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves){    
-    static short moves_score[100];
+
+    assert(moves.size() <= 200);
+    static short moves_score[200];
     for(int i=0; i<moves.size(); i++){
         moves_score[i] = evaluate_move(pos, moves[i]);
     }
 
     for(int i=1; i<moves.size(); i++){
         int j=i;
-        while(j>0 and moves_score[j-1] > moves_score[j]){
+        while(j>0 and moves_score[j-1] < moves_score[j]){
             std::swap(moves_score[j-1], moves_score[j]);
             // std::swap(moves[j-1], moves[j]);
-            static Move tmp;
-            tmp = moves[j-1];
+            Move tmp = moves[j-1];
             moves[j-1] = moves[j];
             moves[j] = tmp;
             j--;
@@ -54,7 +55,7 @@ short MoveOrderer::evaluate_move(const Position& pos, Move move){
 
 const static int non_capture_penalty = 10;
 
-double ACDC::Negamax(Position pos, int depth, int remain_moves, int alpha, int beta){
+double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, double beta){
     assert(depth >= 0);
     visited_states++;
     // debug <<"\ncall Negamax of "<< pos;
@@ -94,7 +95,7 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, int alpha, int b
     }
     #endif
 
-    int opt = -CDCEvaluate::score_mx;
+    double opt = alpha;
     Move opt_move;
     MoveList<> nx_moves(pos);
 
@@ -107,7 +108,7 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, int alpha, int b
         //         return score_mx;
         //     // continue;
         // }
-        int v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -opt);
+        double v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -opt);
         
         // if(pos.due_up() == solver_color)
         //     v -= move_penalty;
@@ -138,7 +139,7 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, int alpha, int b
     return opt;
 }
 
-double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, int alpha, int beta){
+double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, double alpha, double beta){
     //the move is an ordinary moves of a stone
     // debug <<"call move_Evaluate\n";
     // debug << "move:" <<move<<'\n';
@@ -146,7 +147,7 @@ double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves,
         bool is_capture_move = (pos.peek_piece_at(move.to()).type != NO_PIECE);
         pos.do_move(move);
         // debug <<"\t not flipping\n";
-        return -Negamax(pos, depth, remain_moves, alpha, beta) - (!is_capture_move)*non_capture_penalty;
+        return -Negamax(pos, depth, remain_moves, alpha, beta);
     }
 
     //otherwise, the move will be a flipping operation, perform star-algorithm
@@ -156,10 +157,23 @@ double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves,
     pos_copy.do_move(move);//so the player is changed
     
     Square hidden_sq = move.from();
-    int total_mass = 0;
-    long long total_score = 0;
+
+
+    int C=0;
     // debug <<"start iterate\n";
+    for(int piecetype = General; piecetype <= Soldier; piecetype++)
+        for(int color = Black; color <= Red; color++)
+            C += remain_hidden_pieces[color][piecetype];
+
+
     // debug << "start:" << General <<", end:" << Soldier <<std::endl;
+
+    double CscoreMax = CDCEvaluate::score_mx;
+    double CscoreMin = -CDCEvaluate::score_mx;
+
+    int total_mass = 0;
+    double total_score = 0;
+
     for(int piecetype = General; piecetype <= Soldier; piecetype++){
         for(int color = Black; color <= Red; color++){
             int branch_mass = remain_hidden_pieces[color][piecetype];
@@ -169,6 +183,7 @@ double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves,
             
             Piece piece(static_cast<Color>(color), static_cast<PieceType>(piecetype));
             pos_copy.place_piece_at(piece, hidden_sq);
+
             double eval;
             if(depth >= 1)
                 eval = -Negamax(pos_copy, depth-1, 30, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
@@ -177,6 +192,20 @@ double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves,
             
             total_mass += branch_mass;
             total_score += branch_mass * eval;
+
+            CscoreMax = total_score + (C-total_mass)*CDCEvaluate::score_mx;
+            CscoreMin = total_score - (C-total_mass)*CDCEvaluate::score_mx;
+
+            if(CscoreMin >= C*beta){
+                // return beta;
+                return CscoreMin/C;
+            }
+
+            if(CscoreMax <= C*alpha){
+                // return alpha;
+                return CscoreMax/C;
+            }
+
 
             
             // debug << "\t\t piece " << piecetype <<", color " << color <<'\n';
@@ -198,12 +227,13 @@ Move ACDC::opt_solution(Position pos, int depth, int remain_moves){
 
     debug << opt_move<<":\n";
     debug << '\t' << opt_score << std::endl;
+    debug << "\t visited nodes:" << visited_states << std::endl;
 
     for(int i=1; i<nx_moves.size(); i++){
         debug << nx_moves[i] << ":\n";
         reset();
 
-        double move_score = Move_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, -opt_move, CDCEvaluate::score_mx);
+        double move_score = Move_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, opt_score, CDCEvaluate::score_mx);
 
         if(move_score > opt_score){
             opt_move = nx_moves[i];

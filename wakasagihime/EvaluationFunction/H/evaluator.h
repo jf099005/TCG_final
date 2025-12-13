@@ -11,7 +11,7 @@
 typedef int Score;
 
 namespace CDCEvaluate{
-    const double score_mx = 1000;
+    const double score_mx = 75;
     Score calculate_score(Position pos, int remain_moves = 30);
 }
 

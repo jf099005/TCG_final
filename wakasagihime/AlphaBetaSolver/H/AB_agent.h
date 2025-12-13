@@ -41,10 +41,10 @@ class ACDC{
         }
         
         double Negamax(Position pos, int depth, int remain_moves,\
-                    int alpha = -CDCEvaluate::score_mx, int beta = CDCEvaluate::score_mx);
+                    double alpha = -CDCEvaluate::score_mx, double beta = CDCEvaluate::score_mx);
 
         double Move_Evaluate(Position pos, Move move, int depth, int remain_moves,\
-                    int alpha = -CDCEvaluate::score_mx, int beta = CDCEvaluate::score_mx);
+                    double alpha = -CDCEvaluate::score_mx, double beta = CDCEvaluate::score_mx);
         
         Move opt_solution(Position pos, int depth, int remain_moves);
 

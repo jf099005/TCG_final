@@ -23,9 +23,9 @@ CDCTranspositionTable::~CDCTranspositionTable(){
     delete [] Record;
 }
 
-double CDCTranspositionTable::query(Position pos, int depth){
+double CDCTranspositionTable::query(const Position& pos, int depth){
     long long pos_hash = hash_pos(pos);
-    assert(pos_hash <= random_value_max);
+    assert(pos_hash <= random_value_max && pos_hash >= 0);
     TT_info pos_info = Record[pos_hash];
     if(pos_info.score == notfound or pos_info.depth < depth){
         return notfound;
@@ -34,15 +34,23 @@ double CDCTranspositionTable::query(Position pos, int depth){
     return pos_info.score;
 }
 
+void CDCTranspositionTable::write(const Position& pos, int depth, double score, Move opt_move){
+    long long pos_hash = hash_pos(pos);
+    assert(pos_hash <= random_value_max && pos_hash >= 0);
+    Record[pos_hash].score = score;
+    Record[pos_hash].depth = depth;
+    Record[pos_hash].opt_move = opt_move; //= TT_info(score, depth, opt_move);
+}
 
-long long CDCTranspositionTable::hash_pos(Position pos){
+
+long long CDCTranspositionTable::hash_pos(const Position& pos){
     long long hash_value = 0;
     for(Square sq: BoardView(pos.pieces(FACE_UP))){
         Piece piece = pos.peek_piece_at(sq);
         hash_value ^= piece_hash[ piece.side ][ piece.type ][ sq ];
     }
 
-    for(Square sq: BoardView(pos.pieces(Hidden))){
+    for( Square sq: BoardView(pos.pieces(Hidden)) ){
         hash_value ^= hidden_piece_hash[sq];
     }
 

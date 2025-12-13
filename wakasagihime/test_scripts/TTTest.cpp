@@ -65,5 +65,9 @@ int main()
         debug << pos;
         debug <<"hash value:" << TT.hash_pos(pos) << std:: endl;
 
+        debug <<"lookup:" << TT.query(pos, 4) << std::endl;
+        
+        TT.write(pos, 4, 1919810, Move(1));
+
     }
 }

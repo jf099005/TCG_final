@@ -1,19 +1,22 @@
-#ifndef __ALPHABETA__
-#define __ALPHABETA__ 1
+#ifndef AB_H
+#define AB_H
 
 #include "lib/chess.h"
 #include "lib/marisa.h"
 #include "lib/types.h"
 #include "lib/helper.h"
 #include<algorithm>
-#include"EvaluationFunction/H/evaluator.h"
-
-const int score_mx = 1000;
+#include"evaluator.h"
+#include"TT.h"
 
 class MoveOrderer{
     public:
-        MoveOrderer(){};
-        void ordering_move(MoveList<> & moves);
+        MoveOrderer()
+        {};
+        void ordering_move(const Position& pos, MoveList<> & moves);
+        short evaluate_move(const Position& pos, Move move);
+
+    //private:
 };
 
 class ACDC{
@@ -21,6 +24,13 @@ class ACDC{
         ACDC(){
             // solver_color = color;
             // depth_limit = depth;
+
+            #ifdef TT_H
+            TT = new CDCTranspositionTable(28);
+            #endif
+
+            orderer = new MoveOrderer;
+
             for(int piecetype = General; piecetype<=Soldier; piecetype++){
                 int pieceNumber = piecetype==General?1:
                                         piecetype == Soldier? 5:2;
@@ -30,8 +40,11 @@ class ACDC{
             // std::fill(remain_hidden_pieces, remain_pieces + 2*8, 0);
         }
         
-        double Negamax(Position pos, int depth, int remain_moves, int alpha = -score_mx, int beta = score_mx);
-        double Move_Evaluate(Position pos, Move move, int depth, int remain_moves, int alpha = -score_mx, int beta = score_mx);
+        double Negamax(Position pos, int depth, int remain_moves,\
+                    int alpha = -CDCEvaluate::score_mx, int beta = CDCEvaluate::score_mx);
+
+        double Move_Evaluate(Position pos, Move move, int depth, int remain_moves,\
+                    int alpha = -CDCEvaluate::score_mx, int beta = CDCEvaluate::score_mx);
         
         Move opt_solution(Position pos, int depth, int remain_moves);
 
@@ -41,6 +54,11 @@ class ACDC{
         void reset(){
             visited_states = 0;
         }
+
+        #ifdef TT_H
+        CDCTranspositionTable *TT;
+        #endif
+        MoveOrderer *orderer;
 };
 
 #endif

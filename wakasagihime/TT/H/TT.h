@@ -30,15 +30,15 @@ struct TT_info{
 class CDCTranspositionTable{
     public:
 
-        CDCTranspositionTable(int hash_bits = 26);
+        CDCTranspositionTable(int hash_bits = 32);
         ~CDCTranspositionTable();
-        double query(Position pos, int depth);
+        double query(const Position& pos, int depth);
 
-        double write(Position pos, int depth, double score, Move opt_move);
+        void write(const Position& pos, int depth, double score, Move opt_move);
 
         //private:
 
-        long long hash_pos(Position pos);
+        long long hash_pos(const Position& pos);
 
         long long piece_hash[SIDE_NB][piece_type_numbers][SQUARE_NB];
         long long hidden_piece_hash[SQUARE_NB];

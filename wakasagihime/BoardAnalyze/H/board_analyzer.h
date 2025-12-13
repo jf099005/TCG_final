@@ -8,9 +8,7 @@
 
 extern std::map<PieceType, int> Piece_Value;
 
-int InitialPiecesNumber[8] = {
-    1, 2, 2, 2, 2, 2, 5
-};
+extern int InitialPiecesNumber[8];
 
 Color is_endgame(Position pos);
 

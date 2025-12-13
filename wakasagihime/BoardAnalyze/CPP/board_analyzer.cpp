@@ -1,61 +1,8 @@
 #include"../H/board_analyzer.h"
 
-// Color is_endgame(Position pos){
-//     Board red_pieces = pos.pieces(Red);
-//     Board black_pieces = pos.pieces(Black);
-//     PieceType mx_r = Soldier, mx_b = Soldier;
-
-//     bool red_king_exist = false,\
-//             red_cannon_exist = false,\
-//                 red_pawn_exist = false;
-//     bool black_king_exist = false,\
-//             black_cannon_exist = false,\
-//                 black_pawn_exist = false;
-//     for(Square sq_r: BoardView(red_pieces)){
-//         PieceType type_r = pos.peek_piece_at(sq_r).type;
-//         if(type_r == General){
-//             red_king_exist = true;
-//         }
-//         else if(type_r == Cannon){
-//             red_cannon_exist = true;
-//         }
-//         else if(type_r == Soldier){
-//             red_pawn_exist = true;
-//         }
-//         else{
-//             if( type_r > mx_r )
-//                 mx_r = type_r;
-//         }
-//     }
-
-//     for(Square sq_b: BoardView(black_pieces)){
-//         PieceType type_b = pos.peek_piece_at(sq_b).type;
-//         if(type_b == General){
-//             black_king_exist = true;
-//         }
-//         else if(type_b == Cannon){
-//             black_cannon_exist = true;
-//         }
-//         else if(type_b == Soldier){
-//             black_pawn_exist = true;
-//         }
-//         else{
-//             if( type_b > mx_b )
-//                 mx_b = type_b;
-//         }
-//     }
-
-//     if(red_king_exist and\
-//         (not black_cannon_exist) and\
-//                 (not black_pawn_exist)){
-//         return Red;
-//     }
-
-
-
-
-//     return NO_COLOR;
-// }
+int InitialPiecesNumber[8] = {
+    1, 2, 2, 2, 2, 2, 5
+};
 
 Color is_endgame(Position pos){
     // bool red_win = true;

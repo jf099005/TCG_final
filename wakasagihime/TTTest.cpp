@@ -5,7 +5,14 @@
 #include "lib/marisa.h"
 #include "lib/types.h"
 #include "lib/helper.h"
-#include"AlphaBetaSolver/H/AB_agent.h"
+
+#include"AB_agent.h"
+#include <chrono>
+#include"TT.h"
+using namespace std::chrono;
+
+
+
 // Girls are preparing...
 __attribute__((constructor)) void prepare()
 {
@@ -30,6 +37,8 @@ __attribute__((constructor)) void prepare()
     init_magic<Cannon>(cannonTable, cannonMagics);
 }
 
+const int maximum_static_moves = 30;
+
 // le fishe
 int main()
 {
@@ -48,25 +57,13 @@ int main()
      */
     std::string line;
     /* read input board state */
+    
+    CDCTranspositionTable TT;
+
     while (std::getline(std::cin, line)) {
         Position pos(line);
-        ACDC agent;
-        agent.remain_hidden_pieces[Red][General] = 0;
-        agent.remain_hidden_pieces[Red][Soldier] = 0;
-        debug << " output pos:\n";
-        debug << pos <<std::endl;
-
-        MoveList<> nx_moves(pos);
-
-        debug << "all moves:" << nx_moves.size() <<std::endl;
-        debug <<"red pieces:" << pos.count(Red) <<", black count:" << pos.count(Black) <<'\n';
-        for(int i=0; i<nx_moves.size(); i++){
-            debug << nx_moves[i];
-            debug <<"\t" << nx_moves[i].from() << '/' << nx_moves[i].to() << '\n';
-        }
-
-        debug << "static evaluation:"<< CDCEvaluate::calculate_score(pos) << std::endl;
-        debug << "Negamax leaf evaluation:" << agent.Negamax(pos, 1, 30) <<std::endl;
+        debug << pos;
+        debug <<"hash value:" << TT.hash_pos(pos) << std:: endl;
 
     }
 }

@@ -6,11 +6,17 @@
 include sources.mk
 
 CC = g++
-LIB_SRC = lib/marisa.cpp lib/cdc.cpp lib/chess.cpp lib/movegen.cpp lib/helper.cpp wakasagihime.cpp
+
+W_SRC = lib/marisa.cpp lib/cdc.cpp lib/chess.cpp lib/movegen.cpp lib/helper.cpp
+
+LIB_SRC = ${W_SRC} wakasagihime.cpp
 SOURCES = $(LIB_SRC) $(ADD_SOURCES)
 
-EVAL_SRC = lib/marisa.cpp lib/cdc.cpp lib/chess.cpp lib/movegen.cpp lib/helper.cpp EvalHime.cpp
+EVAL_SRC = ${W_SRC} EvalHime.cpp
 EVAL_SOURCES = $(EVAL_SRC) $(ADD_SOURCES)
+
+TT_SRC = ${W_SRC} TTTest.cpp
+TT_SOURCES = $(TT_SRC) $(ADD_SOURCES)
 
 # normal wakasagi
 all:
@@ -26,4 +32,7 @@ why_segfault:
 
 eval:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native $(EVAL_SOURCES) -fsanitize=address,undefined
+
+TTtest:
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native $(TT_SOURCES) -fsanitize=address,undefined
 

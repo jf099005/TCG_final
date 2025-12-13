@@ -5,8 +5,8 @@
 # +-- Set to 0 for English board output --+
 CHINESE = 1
 
-SRC_DIR = MCTS/CPP AlphaBetaSolver/CPP BoardAnalyze/CPP EvaluationFunction/CPP
-INC_DIR = MCTS/H AlphaBetaSolver/H BoardAnalyze/H EvaluationFunction/H
+SRC_DIR = MCTS/CPP AlphaBetaSolver/CPP BoardAnalyze/CPP EvaluationFunction/CPP TT/CPP
+INC_DIR = MCTS/H AlphaBetaSolver/H BoardAnalyze/H EvaluationFunction/H TT/H
 
 
 # include flags

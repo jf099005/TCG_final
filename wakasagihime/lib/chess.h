@@ -271,6 +271,10 @@ class Position {
      * Clears the bag for face-down pieces.
      */
     void clear_collection() { pieceCollection.clear(); }
+    /*
+     * Get all remaining unrevealed pieces.
+     */
+    std::vector<Piece> get_collection() { return pieceCollection; }
 
     /*
      * Makes a position from a FEN-like string.
@@ -438,7 +442,6 @@ class Position {
     bool do_move(const Move &mv);
 
     /*
-     * @experimental
      * Undoes the last successful move. This may be called multiple times.
      *
      * The following are restored:
@@ -454,7 +457,6 @@ class Position {
     bool undo_move();
 
     /*
-     * @experimental
      * Simulates a game until the end, playing moves using _strategy_.
      * The default random strategy is supplied as strategy_random() in helper.h
      *

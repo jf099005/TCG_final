@@ -6,6 +6,12 @@
 #include "lib/types.h"
 #include "lib/helper.h"
 
+#include"AB_agent.h"
+#include <chrono>
+using namespace std::chrono;
+
+
+
 // Girls are preparing...
 __attribute__((constructor)) void prepare()
 {
@@ -30,6 +36,8 @@ __attribute__((constructor)) void prepare()
     init_magic<Cannon>(cannonTable, cannonMagics);
 }
 
+const int maximum_static_moves = 30;
+
 // le fishe
 int main()
 {
@@ -48,33 +56,62 @@ int main()
      */
     std::string line;
     /* read input board state */
+    ACDC acdc;
+    int remain_moves = maximum_static_moves;
+    int face_up_pieces = 0;
+    int current_step = 0;
     while (std::getline(std::cin, line)) {
         Position pos(line);
-        MoveList moves(pos);
-
-        int min_score = 100;
-        int chosen = 0;
-
-        for (int i = 0; i < moves.size(); i += 1) {
-            Position copy(pos);
-            copy.do_move(moves[i]);
-            int local_score = 0;
-            for (int j = 0; j < 20; j += 1) {
-                /* Run some (20) simulations. */
-                local_score += copy.simulate(strategy_random);
-            }
-            /*
-             * The simulations started from the opponent's perspective,
-             * so we choose the move that led to the MINIMUM score here.
-             */
-            if (local_score < min_score) {
-                chosen = i;
-                min_score = local_score;
-            }
-            debug << "This is a debug message " << local_score << "\n";
-            std::fflush(stderr);
+        if(pos.time_left() < 0){
+            continue;
         }
-        /* output the move */
-        info << moves[chosen];
+        // MoveList moves(pos);
+        auto start = high_resolution_clock::now();
+
+        if(pos.count(Hidden) == 32){
+            debug << " a new game\n";
+            current_step = 0;
+            remain_moves = maximum_static_moves;
+        }
+
+        if(pos.count(FACE_UP) != face_up_pieces){
+            remain_moves = maximum_static_moves;
+        }
+
+        debug << pos << std::endl;
+        debug << "\t remain time:" << pos.time_left() <<std::endl;
+
+        info << acdc.opt_solution(pos, 6, remain_moves);
+
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<microseconds>(stop - start);
+        debug << "time:" << double(duration.count())*microseconds::period::num/microseconds::period::den << std::endl;
+
+
+        remain_moves -= 2;
+        // int min_score = 100;
+        // int chosen = 0;
+
+        // for (int i = 0; i < moves.size(); i += 1) {
+        //     Position copy(pos);
+        //     copy.do_move(moves[i]);
+        //     int local_score = 0;
+        //     for (int j = 0; j < 20; j += 1) {
+        //         /* Run some (20) simulations. */
+        //         local_score += copy.simulate(strategy_random);
+        //     }
+        //     /*
+        //      * The simulations started from the opponent's perspective,
+        //      * so we choose the move that led to the MINIMUM score here.
+        //      */
+        //     if (local_score < min_score) {
+        //         chosen = i;
+        //         min_score = local_score;
+        //     }
+        //     debug << "This is a debug message " << local_score << "\n";
+        //     std::fflush(stderr);
+        // }
+        // /* output the move */
+        // info << moves[chosen];
     }
 }

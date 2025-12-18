@@ -13,5 +13,6 @@ extern int InitialPiecesNumber[8];
 Color is_endgame(Position pos);
 
 int pieces_score(const Position &pos, Board pieces_location);
+int exp_pieces_score(const Position &pos, Board pieces_location);
 
 #endif

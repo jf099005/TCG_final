@@ -18,6 +18,9 @@ EVAL_SOURCES = $(EVAL_SRC) $(ADD_SOURCES)
 TT_SRC = ${W_SRC} TTTest.cpp
 TT_SOURCES = $(TT_SRC) $(ADD_SOURCES)
 
+GEN_SRC = ${W_SRC} gen_piecevalues_table.cpp
+GEN_SOURCES = $(GEN_SRC) $(ADD_SOURCES)
+
 # normal wakasagi
 all:
 	g++ -o wakasagi -O2 -DCHINESE_ENABLED=$(CHINESE) -march=native $(SOURCES)
@@ -36,3 +39,5 @@ eval:
 TTtest:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native $(TT_SOURCES) -fsanitize=address,undefined
 
+Gen:
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native $(GEN_SOURCES) -fsanitize=address,undefined

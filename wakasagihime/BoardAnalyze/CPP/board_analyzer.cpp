@@ -64,9 +64,8 @@ std::map<PieceType, int> Piece_Value = {
     {Elephant, 6},
     {Chariot, 5},
     {Horse, 3},
-    {Cannon, 9},
-    {Soldier, 1},
-    {Hidden, 100}
+    {Cannon, 5},
+    {Soldier, 1}
 };
 
 int pieces_score(const Position &pos, Board pieces_location){
@@ -76,4 +75,14 @@ int pieces_score(const Position &pos, Board pieces_location){
         score += Piece_Value[ pos.peek_piece_at(sq).type ];
     }
     return score;
+}
+
+int exp_pieces_score(const Position &pos, Board pieces_location){
+    int score = 0;
+    // Board pieces_location = pos.pieces(side);
+    for(Square sq: BoardView(pieces_location)){
+        score += (1ll << (Piece_Value[ pos.peek_piece_at(sq).type ]));
+    }
+    return score;
+
 }

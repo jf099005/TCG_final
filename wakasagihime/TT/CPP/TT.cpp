@@ -14,8 +14,10 @@ CDCTranspositionTable::CDCTranspositionTable(int hash_bits){
         SideToMove_hash[side] = rng(random_value_max);
     }
 
-    for(int sq = SQ_A1; sq< SQUARE_NB; sq++)
+    for(int sq = SQ_A1; sq< SQUARE_NB; sq++){
         hidden_piece_hash[sq] = rng(random_value_max);
+        flipping_sq_hash[sq] = rng(random_value_max);
+    }
 
 }
 
@@ -23,16 +25,27 @@ CDCTranspositionTable::~CDCTranspositionTable(){
     delete [] Record;
 }
 
-double CDCTranspositionTable::query(const Position& pos, int depth){
+TT_info* CDCTranspositionTable::query(const Position& pos, int depth){
     long long pos_hash = hash_pos(pos);
     assert(pos_hash <= random_value_max && pos_hash >= 0);
-    TT_info pos_info = Record[pos_hash];
-    if(pos_info.score == notfound or pos_info.depth < depth){
-        return notfound;
-    }
-
-    return pos_info.score;
+    return Record + pos_hash;
+    // if(pos_info.score == notfound or pos_info.depth < depth){
+    //     return notfound;
+    // }
 }
+
+
+TT_info* CDCTranspositionTable::query_for_flipping(const Position& pos, int depth, Square flip_sq){
+    long long pos_hash = hash_pos(pos);
+    pos_hash ^= flipping_sq_hash[flip_sq];
+    assert(pos_hash <= random_value_max && pos_hash >= 0);
+    return Record + pos_hash;
+    // if(pos_info.score == notfound or pos_info.depth < depth){
+    //     return notfound;
+    // }
+}
+
+
 
 void CDCTranspositionTable::write(const Position& pos, int depth, double score, Move opt_move){
     long long pos_hash = hash_pos(pos);
@@ -40,6 +53,13 @@ void CDCTranspositionTable::write(const Position& pos, int depth, double score, 
     Record[pos_hash].score = score;
     Record[pos_hash].depth = depth;
     Record[pos_hash].opt_move = opt_move; //= TT_info(score, depth, opt_move);
+}
+
+
+void CDCTranspositionTable::write(TT_info* info_ptr, int depth, double score, Move opt_move){
+    info_ptr->score = score;
+    info_ptr->depth = depth;
+    info_ptr->opt_move = opt_move; //= TT_info(score, depth, opt_move);
 }
 
 

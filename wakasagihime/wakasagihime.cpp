@@ -8,7 +8,7 @@
 
 #include"AB_agent.h"
 #include <chrono>
-using namespace std::chrono;
+// using namespace std::chrono;
 
 
 
@@ -66,7 +66,7 @@ int main()
             continue;
         }
         // MoveList moves(pos);
-        auto start = high_resolution_clock::now();
+        auto start = std::chrono::high_resolution_clock::now();
 
         if(pos.count(Hidden) == 32){
             debug << " a new game\n";
@@ -80,38 +80,23 @@ int main()
 
         debug << pos << std::endl;
         debug << "\t remain time:" << pos.time_left() <<std::endl;
+        debug << "\t remain moves:" << remain_moves <<std::endl;
 
-        info << acdc.opt_solution(pos, 6, remain_moves);
+        double time_constraint = 1.0;
 
-        auto stop = high_resolution_clock::now();
-        auto duration = duration_cast<microseconds>(stop - start);
-        debug << "time:" << double(duration.count())*microseconds::period::num/microseconds::period::den << std::endl;
+        int exp_depth = 6;
+        // info << acdc.opt_solution_exp(pos, exp_depth, remain_moves);
+        info << acdc.opt_solution(pos, time_constraint, remain_moves);
+
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        debug << "time:" << double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den << std::endl;
 
 
+
+        // #ifdef TT_H
+        // acdc.trace_PV(pos, exp_depth);
+        // #endif
         remain_moves -= 2;
-        // int min_score = 100;
-        // int chosen = 0;
-
-        // for (int i = 0; i < moves.size(); i += 1) {
-        //     Position copy(pos);
-        //     copy.do_move(moves[i]);
-        //     int local_score = 0;
-        //     for (int j = 0; j < 20; j += 1) {
-        //         /* Run some (20) simulations. */
-        //         local_score += copy.simulate(strategy_random);
-        //     }
-        //     /*
-        //      * The simulations started from the opponent's perspective,
-        //      * so we choose the move that led to the MINIMUM score here.
-        //      */
-        //     if (local_score < min_score) {
-        //         chosen = i;
-        //         min_score = local_score;
-        //     }
-        //     debug << "This is a debug message " << local_score << "\n";
-        //     std::fflush(stderr);
-        // }
-        // /* output the move */
-        // info << moves[chosen];
     }
 }

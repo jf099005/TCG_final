@@ -16,7 +16,7 @@ struct TT_info{
 
     TT_info(){
         score = 114514;
-        depth = 0;
+        depth = -114514;
     };
 
     TT_info(double s, int d, Move nx){
@@ -32,9 +32,13 @@ class CDCTranspositionTable{
 
         CDCTranspositionTable(int hash_bits = 32);
         ~CDCTranspositionTable();
-        double query(const Position& pos, int depth);
+
+        TT_info* query(const Position& pos, int depth);
+        TT_info* query_for_flipping(const Position& pos, int depth, Square flip_sq);
 
         void write(const Position& pos, int depth, double score, Move opt_move);
+        void write(TT_info* info_ptr, int depth, double score, Move opt_move);
+        void write(TT_info* info_ptr, int depth, Square flip_sq, double score, Move opt_move);
 
         //private:
 
@@ -42,6 +46,7 @@ class CDCTranspositionTable{
 
         long long piece_hash[SIDE_NB][piece_type_numbers][SQUARE_NB];
         long long hidden_piece_hash[SQUARE_NB];
+        long long flipping_sq_hash[SQUARE_NB];
         long long SideToMove_hash[SIDE_NB];
 
 

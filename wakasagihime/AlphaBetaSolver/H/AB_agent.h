@@ -19,6 +19,8 @@ class MoveOrderer{
     //private:
 };
 
+const int MAX_DEPTH = 100;
+
 class ACDC{
     public:
         ACDC(){
@@ -27,9 +29,12 @@ class ACDC{
 
             #ifdef TT_H
             TT = new CDCTranspositionTable(28);
+            debug << "maximum for TT:" << (1ll<<28) << '\n';
             #endif
 
             orderer = new MoveOrderer;
+
+            history = new Move[MAX_DEPTH];
 
             for(int piecetype = General; piecetype<=Soldier; piecetype++){
                 int pieceNumber = piecetype==General?1:
@@ -41,12 +46,15 @@ class ACDC{
         }
         
         double Negamax(Position pos, int depth, int remain_moves,\
-                    double alpha = -CDCEvaluate::score_mx, double beta = CDCEvaluate::score_mx);
+                    double alpha = -CDCEvaluate::score_mx, double beta = CDCEvaluate::score_mx, Move prv = Move(0));
 
         double Move_Evaluate(Position pos, Move move, int depth, int remain_moves,\
                     double alpha = -CDCEvaluate::score_mx, double beta = CDCEvaluate::score_mx);
         
-        Move opt_solution(Position pos, int depth, int remain_moves);
+        Move opt_solution_with_fixed_depth(Position pos, int depth, int remain_moves);
+        Move opt_solution_exp(Position pos, int depth, int remain_moves);
+
+        Move opt_solution(Position pos, double time_constraint, int remain_moves);
 
         unsigned short remain_hidden_pieces[2][8];
 
@@ -57,8 +65,11 @@ class ACDC{
 
         #ifdef TT_H
         CDCTranspositionTable *TT;
+        void trace_PV(Position pos, int depth);
         #endif
         MoveOrderer *orderer;
+
+        Move* history;
 };
 
 #endif

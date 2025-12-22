@@ -58,13 +58,15 @@ Color is_endgame(Position pos){
     return NO_COLOR;
 }
 
+const int Piece_Value_Max = 8;
+
 std::map<PieceType, int> Piece_Value = {
-    {General, 7},
-    {Advisor, 8},
-    {Elephant, 6},
+    {General, 20},
+    {Advisor, 25},
+    {Elephant, 18},
     {Chariot, 5},
     {Horse, 3},
-    {Cannon, 5},
+    {Cannon, 18},
     {Soldier, 1}
 };
 

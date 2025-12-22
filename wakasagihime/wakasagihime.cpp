@@ -92,7 +92,8 @@ int main()
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         debug << "time:" << double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den << std::endl;
 
-
+        debug << "eval:" << CDCEvaluate::calculate_score(pos, 30) << "/" << \
+                CDCEvaluate::distance_score(pos, Red, Black) <<std::endl;
 
         // #ifdef TT_H
         // acdc.trace_PV(pos, exp_depth);

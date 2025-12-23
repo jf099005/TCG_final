@@ -37,7 +37,13 @@ eval:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native $(EVAL_SOURCES) -fsanitize=address,undefined
 
 TTtest:
-	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native $(TT_SOURCES) -fsanitize=address,undefined
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/TTTest.cpp -fsanitize=address,undefined
 
 Gen:
-	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native $(GEN_SOURCES) -fsanitize=address,undefined
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/gen_piecevalues_table.cpp -fsanitize=address,undefined
+
+ORtest:
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/orderingTest.cpp -fsanitize=address,undefined
+
+adjtest:
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/adj_test.cpp -fsanitize=address,undefined

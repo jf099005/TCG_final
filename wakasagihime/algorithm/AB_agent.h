@@ -6,6 +6,7 @@
 #include "lib/types.h"
 #include "lib/helper.h"
 #include<algorithm>
+#include<chrono>
 #include"evaluator.h"
 #include"TT.h"
 
@@ -20,16 +21,20 @@ class MoveOrderer{
 };
 
 const int MAX_DEPTH = 100;
+const int TT_bits = 30;
+
 
 class ACDC{
     public:
+
+        const int max_extend_depth = 6;
         ACDC(){
             // solver_color = color;
             // depth_limit = depth;
 
             #ifdef TT_H
-            TT = new CDCTranspositionTable(28);
-            debug << "maximum for TT:" << (1ll<<28) << '\n';
+            TT = new CDCTranspositionTable(TT_bits);
+            debug << "maximum for TT:" << (1ll<<TT_bits) << '\n';
             #endif
 
             orderer = new MoveOrderer;
@@ -54,13 +59,20 @@ class ACDC{
         Move opt_solution_with_fixed_depth(Position pos, int depth, int remain_moves);
         Move opt_solution_exp(Position pos, int depth, int remain_moves);
 
-        Move opt_solution(Position pos, double time_constraint, int remain_moves);
+
+        double start_time;
+        std::chrono::steady_clock::time_point deadline;
+        
+        Move opt_solution(Position pos, double given_time, int remain_moves);
 
         unsigned short remain_hidden_pieces[2][8];
 
         int visited_states;
+        int correct_prediction, fail_prediction;
         void reset(){
             visited_states = 0;
+            correct_prediction = 0;
+            fail_prediction = 0;
         }
 
         #ifdef TT_H

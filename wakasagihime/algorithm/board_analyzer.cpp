@@ -1,8 +1,24 @@
-#include"../H/board_analyzer.h"
+#include"board_analyzer.h"
 
-int InitialPiecesNumber[8] = {
-    1, 2, 2, 2, 2, 2, 5
-};
+// Square Adjacent[32][4];
+// int num_Adjacent[32];
+
+void init_Adjacent_table(){
+    for(Square from = SQ_A1; from <= SQ_H4; from = from+1){
+        int num_destination = 0;
+        for(Direction dir: AllMoveDirections){
+            Square to = from + dir;
+            if(!is_okay(to))
+                continue;
+
+            if(distance(Square(from), Square(to)) == 1){
+                Adjacent[from][num_destination++] = to;
+            }
+        }
+        num_Adjacent[from] = num_destination;
+    }
+}
+
 
 Color is_endgame(Position pos){
     // bool red_win = true;
@@ -57,18 +73,6 @@ Color is_endgame(Position pos){
     }
     return NO_COLOR;
 }
-
-const int Piece_Value_Max = 8;
-
-std::map<PieceType, int> Piece_Value = {
-    {General, 20},
-    {Advisor, 25},
-    {Elephant, 18},
-    {Chariot, 5},
-    {Horse, 3},
-    {Cannon, 18},
-    {Soldier, 1}
-};
 
 int pieces_score(const Position &pos, Board pieces_location){
     int score = 0;

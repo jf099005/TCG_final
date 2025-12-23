@@ -5,7 +5,7 @@
 #include "lib/marisa.h"
 #include "lib/types.h"
 #include "lib/helper.h"
-#include"BoardAnalyze/H/board_analyzer.h"
+#include"board_analyzer.h"
 
 
 typedef double Score;
@@ -13,7 +13,7 @@ typedef double Score;
 namespace CDCEvaluate{
     const double score_mx = 1000000;
     
-    Score distance_score(const Position& pos, Color side, Color opponent);
+    Score distance_score(const Position& pos, Color side, Color opponent, PieceType opponent_type);
 
     Score calculate_score(const Position& pos, int remain_moves = 30);
 

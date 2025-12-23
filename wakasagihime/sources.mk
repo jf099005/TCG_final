@@ -5,8 +5,8 @@
 # +-- Set to 0 for English board output --+
 CHINESE = 1
 
-SRC_DIR = AlphaBetaSolver/CPP BoardAnalyze/CPP EvaluationFunction/CPP TT/CPP
-INC_DIR = AlphaBetaSolver/H BoardAnalyze/H EvaluationFunction/H TT/H
+SRC_DIR = algorithm
+INC_DIR = algorithm
 
 
 # include flags

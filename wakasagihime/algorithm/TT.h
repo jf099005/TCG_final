@@ -11,12 +11,12 @@ const int piece_type_numbers = 7;
 
 struct TT_info{
     double score;
-    int depth;
+    short depth;
     Move opt_move;
 
     TT_info(){
         score = 114514;
-        depth = -114514;
+        depth = -1;
     };
 
     TT_info(double s, int d, Move nx){

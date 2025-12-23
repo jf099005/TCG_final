@@ -1,5 +1,5 @@
 #include"AB_agent.h"
-#include<chrono>
+#include<iomanip>
 void MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves){    
 
     assert(moves.size() <= 200);
@@ -23,53 +23,151 @@ void MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves){
     return;
 }
 
-short MoveOrderer::evaluate_move(const Position& pos, Move move){
-    static const int normal_move_score = 2;
-    static const int capture_move_score = 10;
-    static const int flip_move_score = 1;
+//0-4
+// inline int mobility(const Position& pos, PieceType piece_tp, const Move& move){
+//     Square sq = move.to();
+//     int mobility = 0;
+//     for(auto dir:AllMoveDirections){
+//         Square sq_nx = sq + dir;
+//         PieceType nx_tp = pos.peek_piece_at(sq_nx).type;
+//         mobility += (distance(sq, sq_nx) == 1) and\
+//                 (nx_tp == NO_PIECE or piece_tp > nx_tp);
+//     }
+//     return mobility;
+// }
 
+short MoveOrderer::evaluate_move(const Position& pos, Move move){
+    static const int normal_move_point = 2;
+    static const int basic_capture_move_point = 1;
+    static const int basic_flip_move_point = 2;
 
     if(move.type() == Flipping)
-        return flip_move_score;
+        return basic_flip_move_point;
 
-    PieceType s = pos.peek_piece_at(move.from()).type;
+    PieceType piece_tp = pos.peek_piece_at(move.from()).type;
 
-    PieceType e = pos.peek_piece_at(move.to()).type;
+    PieceType target_tp = pos.peek_piece_at(move.to()).type;
 
-    if( e != NO_PIECE){
-        int score = capture_move_score;
-        score += Piece_Value[e];
-        if(s == Cannon){
-            score -= (Piece_Value[s] >> 1);
+    int capture_score = 0;
+
+    if( target_tp != NO_PIECE){
+        capture_score += Piece_Value[target_tp];
+        if(piece_tp == Cannon){
+            capture_score -= (Piece_Value[piece_tp] >> 1);
         }
         else{
-            score += (Piece_Value[s] >> 1);
+            capture_score += (Piece_Value[piece_tp] >> 3);
         }
-        return score;
     }
     
-    return normal_move_score;
+    
+    Square sq_to = move.to();
+
+    int mobility = 0;
+    int attack_val = 0, attack_cnt = 0;
+    bool threaten = false;
+
+    for(int idx_dir = 0; idx_dir < AllMoveDirections_size and !threaten; idx_dir++){
+        Direction dir = AllMoveDirections[idx_dir];
+        Square sq_nx = sq_to + dir;
+        Piece nx_piece = pos.peek_piece_at(sq_nx);
+
+        if(sq_nx < 0 || sq_nx >= 32 || (distance(sq_to, sq_nx) > 1) ||\
+             nx_piece.side == pos.due_up() )
+            continue;
+
+        bool can_move = (
+                            nx_piece.type == NO_PIECE or
+                            (
+                                piece_tp > nx_piece.type and 
+                                nx_piece.type != piece_tp
+                            )
+                        );
+
+        mobility += can_move;
+        threaten |= nx_piece.type > piece_tp;
+        bool can_attack = piece_tp > nx_piece.type and\
+                                 !threaten;
+        
+        attack_val += can_attack?Piece_Value[nx_piece.type]:0;
+        attack_cnt+= can_attack;
+    }
+
+    capture_score += threaten?
+            -(Piece_Value[piece_tp] + (Piece_Value[target_tp] >> 3)):\
+            basic_capture_move_point;
+
+    return (capture_score)*4 + (threaten? 0 : mobility + 2*attack_val) + normal_move_point;
 }
 
 
 
 const static int non_capture_penalty = 10;
 
+
+
+inline bool is_dangerous(const Position& pos, Square piece_sq){
+    bool danger = false;
+
+    Piece piece = pos.peek_piece_at(piece_sq);
+
+    int opponent = !piece.side;
+    assert(opponent == 0 || opponent == 1);
+
+    for(int idx_sq = 0; !danger && idx_sq < num_Adjacent[piece_sq]; idx_sq++){
+        Square sq_adj = Adjacent[piece_sq][idx_sq];
+        Piece adj = pos.peek_piece_at(sq_adj);
+
+        danger |= (adj.side == opponent && adj.type != Cannon && adj.type > piece.type);
+    }
+    return danger;
+}
+
+//return 0 if is not an attack move
+inline int attack_gain(const Position& pos, Square piece_sq){
+    int atk_gain = 0;
+
+    Piece piece = pos.peek_piece_at(piece_sq);
+
+    int opponent = !piece.side;
+    assert(opponent == 0 || opponent == 1);
+
+    for(int idx_sq = 0; idx_sq < num_Adjacent[piece_sq]; idx_sq++){
+        Square sq_adj = Adjacent[piece_sq][idx_sq];
+        Piece adj = pos.peek_piece_at(sq_adj);
+        int pt = (adj.side == opponent && piece.type > adj.type)?Piece_Value[adj.type]:0;
+        atk_gain = std::max(atk_gain, pt);
+    }
+    return atk_gain;
+}
+
+inline  bool is_unstable(const Position& pos, Move prv_move){
+    int atk_gain = attack_gain(pos, prv_move.to());
+    return is_dangerous(pos, prv_move.to()) or (atk_gain >= Piece_Value[Elephant]) or\
+                (atk_gain > 0 and pos.count(pos.due_up()) <= 3);
+};
+
+
 double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, double beta, Move prv){
-    assert(depth >= 0);
-    visited_states++;
-    if(pos.winner() != NO_COLOR){
-        if(pos.winner() == Mystery)
-            return 0;
-        if(pos.winner() == pos.due_up())
-            return CDCEvaluate::score_mx;
+    if(std::chrono::steady_clock::now() > deadline){
         return -CDCEvaluate::score_mx;
     }
+
+    assert(depth >= -max_extend_depth);
+
+    visited_states++;
+    if(pos.winner() != NO_COLOR){
+        return (pos.winner() == Mystery)? 0:\
+        (pos.winner() == pos.due_up()) ?\
+            CDCEvaluate::score_mx : -CDCEvaluate::score_mx;
+    }
+
     if(remain_moves == 0){
         return 0;
     }
     
-    if(depth == 0){
+    if(depth <= 0){
+
         int score =  CDCEvaluate::calculate_score(pos, remain_moves);
         return score;
     }
@@ -118,7 +216,8 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
             #ifdef TT_H
             TT->write(tt_lookup, depth, opt, opt_move);
             #endif
-
+            correct_prediction += (nx_move == nx_moves[0]);
+            fail_prediction += !(nx_move == nx_moves[0]);
             return v;
         }
     }
@@ -127,14 +226,25 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     TT->write(tt_lookup, depth, opt, opt_move);
     #endif
 
+    bool prediction = (nx_moves.size() and opt_move == nx_moves[0]);
+    // prediction |= (nx_moves.size() >= 1 and opt_move == nx_moves[1]);
+    // prediction |= (nx_moves.size() >= 2 and opt_move == nx_moves[2]);
+    
+    correct_prediction += prediction;
+    fail_prediction += !prediction;
+
+
     return opt;
 }
 
 double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, double alpha, double beta){
     //the move is an ordinary moves of a stone
     if(move.type() != Flipping){
+        if(pos.peek_piece_at(move.to()).type != NO_PIECE)
+            remain_moves = 30;
+
         pos.do_move(move);
-        return -Negamax(pos, depth, remain_moves, alpha, beta);
+        return -Negamax(pos, depth, remain_moves, alpha, beta, move);
     }
 
     //otherwise, the move will be a flipping operation, perform star-algorithm
@@ -187,9 +297,9 @@ double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves,
 
             double eval;
             if(depth >= 1)
-                eval = -Negamax(pos_copy, depth-1, 30, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
+                eval = -Negamax(pos_copy, depth-1, 30, -CDCEvaluate::score_mx, CDCEvaluate::score_mx, move);
             else
-                eval = -Negamax(pos_copy, depth, 30, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
+                eval = -Negamax(pos_copy, depth, 30, -CDCEvaluate::score_mx, CDCEvaluate::score_mx, move);
             
             total_mass += branch_mass;
             total_score += branch_mass * eval;
@@ -213,8 +323,6 @@ double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves,
                 return CscoreMax/C;
             }
 
-
-            
             // debug << "\t\t piece " << piecetype <<", color " << color <<'\n';
             // debug << "\t\t\t mass:" << branch_mass << '\n';
             // debug << "\t\t\t accmulate:" << total_score <<std::endl;
@@ -304,22 +412,54 @@ Move ACDC::opt_solution_exp(Position pos, int depth, int remain_moves){
     return opt_move;
 }
 
-Move ACDC::opt_solution(Position pos, double time_constaint, int remain_moves){
+Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
+
+    reset();
+
+    double time_constraint = given_time;
+
     int depth = 2;
-
-    auto start = std::chrono::high_resolution_clock::now();
     Move opt;
-    while(true){
-        opt = opt_solution_with_fixed_depth(pos, depth, remain_moves);
-        depth += 2;
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        double spent_time = double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den;
 
-        debug << "depth: " << depth <<", total spent time:" << spent_time << std::endl;
-        if(spent_time*100 > time_constaint){
+
+    auto start = std::chrono::steady_clock::now();
+
+    int64_t time_us =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::duration<double>(time_constraint)
+            ).count();
+
+    this->deadline = start + std::chrono::microseconds(time_us);
+
+    while(true){
+        reset();
+
+        Move search_solution = opt_solution_with_fixed_depth(pos, depth, remain_moves);
+        // auto end = std::chrono::high_resolution_clock::now();
+        // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        // double spent_time = double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den;
+
+        debug << "depth " << depth <<std::endl;
+        debug << "\tvisited: " << visited_states << '\n';
+        debug << "\tcorrect prediction:" << correct_prediction<<'\n';
+        debug << "\tfail prediction:" << fail_prediction << "\n";
+        debug << "\tsuccess rate: " << std::fixed << std::setprecision(3) << double(correct_prediction) / \
+                            double(correct_prediction + fail_prediction) << '\n';
+
+        if(std::chrono::steady_clock::now() > deadline)
             break;
-        }
+
+        depth += 2;
+        if(depth > 12)
+            break;
+
+        // debug << "depth: " << depth <<", total spent time:" << spent_time << std::endl;
+        // if(spent_time*100 > given_time){
+        //     break;
+        // }
+        debug << "search finished\n";
+        debug << '\t' << search_solution;
+        opt = search_solution;
     }
     return opt;
 }

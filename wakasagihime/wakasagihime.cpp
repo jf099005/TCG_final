@@ -8,6 +8,7 @@
 
 #include"AB_agent.h"
 #include <chrono>
+#include<fstream>
 // using namespace std::chrono;
 
 
@@ -60,8 +61,18 @@ int main()
     int remain_moves = maximum_static_moves;
     int face_up_pieces = 0;
     int current_step = 0;
+
+    std::string game_record_path = "/mnt/20F408ADF408876E/TCG/TCG_final/wakasagihime/record.txt";
+    std::ofstream record_ofs;
+
+    record_ofs.open(game_record_path);
+
     while (std::getline(std::cin, line)) {
         Position pos(line);
+
+        record_ofs << pos;
+        record_ofs <<"\t" << pos.toFEN()<<"\n\n";
+
         if(pos.time_left() < 0){
             continue;
         }
@@ -82,18 +93,20 @@ int main()
         debug << "\t remain time:" << pos.time_left() <<std::endl;
         debug << "\t remain moves:" << remain_moves <<std::endl;
 
-        double time_constraint = 1.0;
+        double time_constraint = 10.0;
 
         int exp_depth = 6;
         // info << acdc.opt_solution_exp(pos, exp_depth, remain_moves);
-        info << acdc.opt_solution(pos, time_constraint, remain_moves);
+        Move opt = acdc.opt_solution(pos, time_constraint, remain_moves);
+        info << opt;
+        record_ofs << opt;
 
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         debug << "time:" << double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den << std::endl;
 
         debug << "eval:" << CDCEvaluate::calculate_score(pos, 30) << "/" << \
-                CDCEvaluate::distance_score(pos, Red, Black) <<std::endl;
+                CDCEvaluate::distance_score(pos, Red, Black, ALL_PIECES) <<std::endl;
 
         // #ifdef TT_H
         // acdc.trace_PV(pos, exp_depth);

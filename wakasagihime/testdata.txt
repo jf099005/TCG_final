@@ -37,4 +37,9 @@ A6p/8/8/8 b
     r1aPK1P1/3n3P/1E2P1A1/5r2 b
 
 //PV remain move < 0
+basic:
 1E2r2P/N4pA1/2pA1apn/k3R1e1 r
+
+    extend:
+    1E2r2P/N4pA1/2pAa1pn/k3R1e1 r
+    1E2r2P/N4pA1/2p1a1pn/k2AR1e1 r

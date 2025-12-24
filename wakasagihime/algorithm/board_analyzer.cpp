@@ -16,8 +16,23 @@ void init_Adjacent_table(){
             }
         }
         num_Adjacent[from] = num_destination;
+
+        int num_diagonal = 0;
+
+       for(Direction dir: AllDiagonalDirections){
+            Square to = from + dir;
+            if(!is_okay(to))
+                continue;
+
+            if(distance(Square(from), Square(to)) == 2){
+                Diagonal[from][num_diagonal++] = to;
+            }
+       } 
+
+       num_Diagonal[from] = num_diagonal;
     }
 }
+
 
 
 Color is_endgame(Position pos){

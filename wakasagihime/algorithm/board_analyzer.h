@@ -18,8 +18,17 @@ inline constexpr Direction AllMoveDirections[] = {
     // NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST
 };
 
+inline constexpr Direction AllDiagonalDirections[] = {
+    // NORTH, EAST, SOUTH, WEST,
+    NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST
+};
+
 inline Square Adjacent[32][4];
 inline int num_Adjacent[32];
+
+inline Square Diagonal[32][4];
+inline int num_Diagonal[32];
+
 
 void init_Adjacent_table();
 

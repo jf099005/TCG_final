@@ -13,7 +13,9 @@
 class MoveOrderer{
     public:
         MoveOrderer()
-        {};
+        {
+            init_Adjacent_table();            
+        };
         void ordering_move(const Position& pos, MoveList<> & moves);
         short evaluate_move(const Position& pos, Move move);
 
@@ -31,6 +33,7 @@ class ACDC{
         ACDC(){
             // solver_color = color;
             // depth_limit = depth;
+            init_Adjacent_table();            
 
             #ifdef TT_H
             TT = new CDCTranspositionTable(TT_bits);
@@ -51,7 +54,7 @@ class ACDC{
         }
         
         double Negamax(Position pos, int depth, int remain_moves,\
-                    double alpha = -CDCEvaluate::score_mx, double beta = CDCEvaluate::score_mx, Move prv = Move(0));
+                    double alpha, double beta, Move prv, Square sq_danger = SQ_NONE);
 
         double Move_Evaluate(Position pos, Move move, int depth, int remain_moves,\
                     double alpha = -CDCEvaluate::score_mx, double beta = CDCEvaluate::score_mx);

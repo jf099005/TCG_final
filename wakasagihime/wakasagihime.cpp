@@ -9,6 +9,7 @@
 #include"AB_agent.h"
 #include <chrono>
 #include<fstream>
+#include<iomanip>
 // using namespace std::chrono;
 
 
@@ -92,14 +93,17 @@ int main()
         debug << pos << std::endl;
         debug << "\t remain time:" << pos.time_left() <<std::endl;
         debug << "\t remain moves:" << remain_moves <<std::endl;
+        record_ofs << "\t remain moves:" << remain_moves <<std::endl;
 
-        double time_constraint = 10.0;
+        double time_constraint = 1.0;
 
         int exp_depth = 6;
         // info << acdc.opt_solution_exp(pos, exp_depth, remain_moves);
         Move opt = acdc.opt_solution(pos, time_constraint, remain_moves);
         info << opt;
         record_ofs << opt;
+        record_ofs << "\tsuccess rate: " << std::fixed << std::setprecision(3) << double(acdc.correct_prediction) / \
+                            double(acdc.correct_prediction + acdc.fail_prediction) << '\n';
 
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);

@@ -63,30 +63,29 @@ short MoveOrderer::evaluate_move(const Position& pos, Move move){
     
     Square sq_to = move.to();
 
-    int mobility = 0;
+    int mobility = 1;
     int attack_val = 0, attack_cnt = 0;
     bool threaten = false;
 
-    for(int idx_dir = 0; idx_dir < AllMoveDirections_size and !threaten; idx_dir++){
-        Direction dir = AllMoveDirections[idx_dir];
-        Square sq_nx = sq_to + dir;
+    for(int adj_dir = 0; adj_dir < num_Adjacent[sq_to] and !threaten; adj_dir++){
+        Square sq_nx = Adjacent[sq_to][adj_dir];
         Piece nx_piece = pos.peek_piece_at(sq_nx);
 
         if(sq_nx < 0 || sq_nx >= 32 || (distance(sq_to, sq_nx) > 1) ||\
-             nx_piece.side == pos.due_up() )
+             nx_piece.side == pos.due_up() || nx_piece.type == Hidden )
             continue;
 
         bool can_move = (
-                            nx_piece.type == NO_PIECE or
+                            nx_piece.type == NO_PIECE ||
                             (
-                                piece_tp > nx_piece.type and 
+                                piece_tp > nx_piece.type && 
                                 nx_piece.type != piece_tp
                             )
                         );
 
         mobility += can_move;
         threaten |= nx_piece.type > piece_tp;
-        bool can_attack = piece_tp > nx_piece.type and\
+        bool can_attack = piece_tp > nx_piece.type &&\
                                  !threaten;
         
         attack_val += can_attack?Piece_Value[nx_piece.type]:0;
@@ -97,7 +96,7 @@ short MoveOrderer::evaluate_move(const Position& pos, Move move){
             -(Piece_Value[piece_tp] + (Piece_Value[target_tp] >> 3)):\
             basic_capture_move_point;
 
-    return (capture_score)*4 + (threaten? 0 : mobility + 2*attack_val) + normal_move_point;
+    return (capture_score)*4 + (threaten? 0 : mobility*10 + 2*attack_val) + normal_move_point;
 }
 
 
@@ -148,14 +147,13 @@ inline  bool is_unstable(const Position& pos, Move prv_move){
 };
 
 
-double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, double beta, Move prv){
+double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, double beta, Move prv, Square sq_danger){
     if(std::chrono::steady_clock::now() > deadline){
         return -CDCEvaluate::score_mx;
     }
 
     assert(depth >= -max_extend_depth);
 
-    visited_states++;
     if(pos.winner() != NO_COLOR){
         return (pos.winner() == Mystery)? 0:\
         (pos.winner() == pos.due_up()) ?\
@@ -167,9 +165,10 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     }
     
     if(depth <= 0){
-
-        int score =  CDCEvaluate::calculate_score(pos, remain_moves);
-        return score;
+        if(!is_unstable(pos, prv) or depth <= max_extend_depth){
+            int score =  CDCEvaluate::calculate_score(pos, remain_moves);
+            return score;
+        }
     }
 
     #ifdef TT_H
@@ -179,30 +178,33 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     }
     #endif
 
+    visited_states++;
+
+
     double opt = alpha;
     Move opt_move;
     MoveList<> nx_moves(pos);
     
     orderer->ordering_move(pos, nx_moves);
 
-    #ifdef TT_H
+    // #ifdef TT_H
     
-    if(tt_lookup->depth > 0){
-        for(int i=0; i<nx_moves.size(); i++){
-            if(nx_moves[i] == tt_lookup->opt_move){
-                Move tmp = nx_moves[0];
-                nx_moves[0] = nx_moves[i];
-                nx_moves[i] = tmp;
-            }
-        }
-    }
+    // if(tt_lookup->depth > 0){
+    //     for(int i=0; i<nx_moves.size(); i++){
+    //         if(nx_moves[i] == tt_lookup->opt_move){
+    //             Move tmp = nx_moves[0];
+    //             nx_moves[0] = nx_moves[i];
+    //             nx_moves[i] = tmp;
+    //         }
+    //     }
+    // }
 
-    #endif
+    // #endif
 
-    for(Move nx_move: nx_moves){
+    for(int move_idx = 0; move_idx < nx_moves.size(); move_idx++){
         //
-
-        if(nx_move.type() == Flipping and depth <= 1 and nx_move != nx_moves[nx_moves.size()-1])
+        Move nx_move = nx_moves[move_idx];
+        if(nx_move.type() == Flipping and depth <= 1 and nx_moves[0].type() != Flipping)
             continue;
 
         double v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -opt);
@@ -216,8 +218,8 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
             #ifdef TT_H
             TT->write(tt_lookup, depth, opt, opt_move);
             #endif
-            correct_prediction += (nx_move == nx_moves[0]);
-            fail_prediction += !(nx_move == nx_moves[0]);
+            correct_prediction += (move_idx <= 2);
+            fail_prediction += !(move_idx <= 2);
             return v;
         }
     }
@@ -227,8 +229,8 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     #endif
 
     bool prediction = (nx_moves.size() and opt_move == nx_moves[0]);
-    // prediction |= (nx_moves.size() >= 1 and opt_move == nx_moves[1]);
-    // prediction |= (nx_moves.size() >= 2 and opt_move == nx_moves[2]);
+    prediction |= (nx_moves.size() >= 1 and opt_move == nx_moves[1]);
+    prediction |= (nx_moves.size() >= 2 and opt_move == nx_moves[2]);
     
     correct_prediction += prediction;
     fail_prediction += !prediction;
@@ -430,6 +432,10 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
             ).count();
 
     this->deadline = start + std::chrono::microseconds(time_us);
+
+    MoveList<> nx_moves(pos);
+    orderer->ordering_move(pos, nx_moves);
+    debug << "ordered next move: " << nx_moves[0] << '\n';
 
     while(true){
         reset();

@@ -12,7 +12,7 @@ inline void swap_moves(MoveList<>& moves, int* moves_score, int i, int j){
     *(moves.begin() + j) = tmp;
 }
 
-const Move PAUSE = Move(0);
+const Move PAUSE = Move(1919);
 
 int MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves, bool only_critical_move, bool skip_flipping){    
     assert(moves.size() <= 200 && moves.size());
@@ -188,7 +188,7 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     debug <<"Negamax of depth " << depth << '\n';
     debug <<pos;
     debug << "\tis unstable:" << is_unstable(pos) << '\n';
-    std::cout << "Press Enter to continue...";
+    debug << "Press Enter to continue...";
     std::cin.get();    
     #endif
 
@@ -210,6 +210,11 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     #ifdef TT_H
     TT_info* tt_lookup = TT->query(pos, depth);
     if( tt_lookup->depth >= depth){
+        #ifdef OUTPUT_RECURSION_TREE
+        debug << "return from TT:" << tt_lookup->score <<", calculated score: " << CDCEvaluate::calculate_score(pos, remain_moves) << '\n';
+        debug << "Press Enter to continue...";
+        std::cin.get();    
+        #endif
         if(tt_lookup->is_exact_value){
             return tt_lookup->score;
         }
@@ -222,8 +227,15 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     visited_states++;
 
     if(depth <= 0){
-        // int score =  CDCEvaluate::calculate_score(pos, remain_moves);
-        // return score;
+
+        #ifdef OUTPUT_RECURSION_TREE
+        debug << "return of leaf, calculated score: " << CDCEvaluate::calculate_score(pos, remain_moves) << '\n';
+        debug << "Press Enter to continue...";
+        std::cin.get();    
+        #endif
+
+        int score =  CDCEvaluate::calculate_score(pos, remain_moves);
+        return score;
 
         if(!is_unstable(pos) or depth <= lim_extend_depth){
             int score =  CDCEvaluate::calculate_score(pos, remain_moves);
@@ -265,7 +277,7 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
             opt = -Negamax(pos_copy, depth-1, remain_moves-1, -beta, -alpha, PAUSE);
         }
     }
-    if(num_valid_moves == 0){
+    if(num_valid_moves == 0 && depth <= 0){
         // num_valid_moves = 1;
         if(prv == PAUSE){
             return CDCEvaluate::calculate_score(pos, remain_moves);
@@ -345,16 +357,16 @@ double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves,
         if(pos.peek_piece_at(move.to()).type != NO_PIECE)
             remain_moves = 30;
 
-        Color opponent = pos.peek_piece_at(move.to()).side;
-        PieceType opponent_pt = pos.peek_piece_at(move.to()).type;
-        if(opponent_pt != NO_PIECE){
-            remain_hidden_pieces[opponent][ opponent_pt ]--;
-        }
+        // Color opponent = pos.peek_piece_at(move.to()).side;
+        // PieceType opponent_pt = pos.peek_piece_at(move.to()).type;
+        // if(opponent_pt != NO_PIECE){
+        //     remain_hidden_pieces[opponent][ opponent_pt ]--;
+        // }
         pos.do_move(move);
         double v = -Negamax(pos, depth, remain_moves, alpha, beta, move);
-        if(opponent_pt != NO_PIECE){
-            remain_hidden_pieces[opponent][ opponent_pt ]++;
-        }
+        // if(opponent_pt != NO_PIECE){
+        //     remain_hidden_pieces[opponent][ opponent_pt ]++;
+        // }
 
         return v;
     }
@@ -470,17 +482,18 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
 
     orderer->ordering_move(pos, nx_moves, false, depth <= 2);
     Move opt_move = nx_moves[0];
+    debug << "branch " << opt_move;
     double opt_score = Move_Evaluate(pos, opt_move, depth-1, remain_moves-1, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
-
+    debug << "score:" << opt_score << '\n';
     // debug << "first move score:" << opt_score << '\n';
     for(int i=1; i<nx_moves.size(); i++){
         if(nx_moves[i].type() == Flipping and depth <= 2 and nx_moves[0].type() != Flipping)
             continue;
-        // debug << nx_moves[i] << ":\n";
 
-        double move_score = Move_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, opt_score, CDCEvaluate::score_mx);
+        double move_score = Move_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, -CDCEvaluate::score_mx, -opt_score);
 
-        // debug << "score:" << move_score << '\n';
+        debug << "branch " << nx_moves[i];
+        debug << "score:" << move_score << '\n';
         if(move_score > opt_score){
             opt_move = nx_moves[i];
             opt_score = move_score;
@@ -494,6 +507,8 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
         // debug << "\t visited nodes:" << visited_states << std::endl;
     }
 
+    debug << "\topt score: " << opt_score << '\n';
+
     #ifdef TT_H
     TT->write(pos, depth, opt_score, opt_move);
     #endif
@@ -504,12 +519,10 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
 Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
 
     reset();
-    given_time = 1000;
+    // given_time = 1000;
 
     double time_constraint = given_time;
 
-    int depth = 2;
-    Move opt;
 
 
     auto start = std::chrono::steady_clock::now();
@@ -524,6 +537,8 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
     MoveList<> nx_moves(pos);
     orderer->ordering_move(pos, nx_moves, false, false);
     debug << "ordered next move: " << nx_moves[0] << '\n';
+    int depth = 2;
+    Move opt = nx_moves[0];
 
     while(true){
         reset();

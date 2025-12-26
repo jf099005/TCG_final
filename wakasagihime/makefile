@@ -36,8 +36,8 @@ why_segfault:
 eval:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native $(EVAL_SOURCES) -fsanitize=address,undefined
 
-TTtest:
-	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/TTTest.cpp -fsanitize=address,undefined
+# TTtest:
+# 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/TTTest.cpp -fsanitize=address,undefined
 
 Gen:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/gen_piecevalues_table.cpp -fsanitize=address,undefined
@@ -53,3 +53,5 @@ stabletest:
 
 MoveEvalTest:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/move_eval.cpp -fsanitize=address,undefined
+Test:
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/test.cpp -fsanitize=address,undefined

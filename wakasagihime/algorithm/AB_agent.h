@@ -87,6 +87,12 @@ class ACDC{
                 remain_hidden_pieces[Black][piecetype] = pieceNumber;
             }
             // std::fill(remain_hidden_pieces, remain_pieces + 2*8, 0);
+        };
+
+        ~ACDC(){
+            delete orderer;
+            delete TT;
+            delete [] history;
         }
         
         double Negamax(Position pos, int depth, int remain_moves,\

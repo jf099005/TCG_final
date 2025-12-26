@@ -10,12 +10,12 @@
 #include "types.h"
 
 #include <array>
-#include <stack>
 #include <cassert>
 #include <csignal>
 #include <cstdint>
 #include <cstring>
 #include <optional>
+#include <stack>
 
 // -~ Colors ~-
 
@@ -238,6 +238,16 @@ class Position {
         clear();
     }
 
+    void out_history(){
+        auto st = history;
+        while(st.size()){
+            debug << "move " << st.size() << ":\n";
+            debug << '\t' << st.top().mv;
+            debug << '\t' << "Filpped or captured piece:" << st.top().p.side << st.top().p.type <<'\n';
+            st.pop();
+        }
+    }
+    
     /*
      * A board initialized with a FEN string
      * @param   fen The FEN string
@@ -433,6 +443,13 @@ class Position {
      *          on the same square on each, it may well yield different pieces.
      */
     bool flip_piece_at(Square sq);
+
+    /*
+     * Changes the side to play, effectively passes the turn.
+     * Note that this does NOT count as a move for the purposes of the draw counter
+     * or undo_move(). Use with caution!
+     */
+    void pass_turn() { sideToMove = ~sideToMove; }
 
     /*
      * Performs a move.

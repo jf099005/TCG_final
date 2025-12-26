@@ -47,3 +47,9 @@ ORtest:
 
 adjtest:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/adj_test.cpp -fsanitize=address,undefined
+
+stabletest:
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/stable_test.cpp -fsanitize=address,undefined
+
+MoveEvalTest:
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/move_eval.cpp -fsanitize=address,undefined

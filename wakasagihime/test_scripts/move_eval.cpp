@@ -56,29 +56,21 @@ int main()
      */
     std::string line;
     /* read input board state */
-    
-    MoveOrderer orderer;
-    
+    ACDC agent;
+        
     while (std::getline(std::cin, line)) {
         Position pos(line);
         MoveList nx_moves(pos);
         debug << pos;
-        for(auto nx: nx_moves){
-            debug << nx;
-            debug << orderer.evaluate_move(pos, nx) << '\n';
-        }
+        // for(auto nx: nx_moves){
+        //     debug << nx;
+        //     debug << orderer.evaluate_move(pos, nx) << '\n';
+        // }
+        debug << CDCEvaluate::calculate_score(pos) <<'\n';
+        Move mv(SQ_A4, SQ_A4);
+        // mv.type = Flipping;
+        debug <<"mv:" << mv;
+        debug<<"flip score:" << agent.Move_Evaluate(pos, mv, 0, 30)<<'\n';
 
-        Move tmp = nx_moves[0];
-        nx_moves[0] = nx_moves[1];
-        nx_moves[1] = tmp;
-
-        debug << nx_moves[0] <<',' << nx_moves[1];
-
-        int valid_moves = orderer.ordering_move(pos, nx_moves, 1);
-        debug << "number of valid moves: " << valid_moves << '\n';
-        for(int i=0; i<valid_moves; i++){
-            debug << nx_moves[i];
-            debug << "is critical: " << orderer.is_critical_move(pos, nx_moves[i]) << '\n';
-        }
     }
 }

@@ -56,29 +56,9 @@ int main()
      */
     std::string line;
     /* read input board state */
-    
-    MoveOrderer orderer;
-    
     while (std::getline(std::cin, line)) {
         Position pos(line);
-        MoveList nx_moves(pos);
         debug << pos;
-        for(auto nx: nx_moves){
-            debug << nx;
-            debug << orderer.evaluate_move(pos, nx) << '\n';
-        }
-
-        Move tmp = nx_moves[0];
-        nx_moves[0] = nx_moves[1];
-        nx_moves[1] = tmp;
-
-        debug << nx_moves[0] <<',' << nx_moves[1];
-
-        int valid_moves = orderer.ordering_move(pos, nx_moves, 1);
-        debug << "number of valid moves: " << valid_moves << '\n';
-        for(int i=0; i<valid_moves; i++){
-            debug << nx_moves[i];
-            debug << "is critical: " << orderer.is_critical_move(pos, nx_moves[i]) << '\n';
-        }
+        debug << "is_unstable: " << is_unstable(pos) << '\n' << '\n';
     }
 }

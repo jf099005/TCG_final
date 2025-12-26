@@ -12,17 +12,20 @@ const int piece_type_numbers = 7;
 struct TT_info{
     double score;
     short depth;
+    bool is_exact_value;
     Move opt_move;
 
     TT_info(){
         score = 114514;
-        depth = -1;
+        depth = -114;
+        is_exact_value = false;
     };
 
-    TT_info(double s, int d, Move nx){
+    TT_info(double s, int d, Move nx, bool flag){
         score = s;
         depth = d;
         opt_move = nx;
+        is_exact_value = flag;
     };
 };
 
@@ -37,8 +40,8 @@ class CDCTranspositionTable{
         TT_info* query_for_flipping(const Position& pos, int depth, Square flip_sq);
 
         void write(const Position& pos, int depth, double score, Move opt_move);
-        void write(TT_info* info_ptr, int depth, double score, Move opt_move);
-        void write(TT_info* info_ptr, int depth, Square flip_sq, double score, Move opt_move);
+        void write(TT_info* info_ptr, int depth, double score, Move opt_move, bool is_exact);
+        // void write(TT_info* info_ptr, int depth, Square flip_sq, double score, Move opt_move, bool is_exact);
 
         //private:
 

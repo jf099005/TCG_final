@@ -47,10 +47,34 @@ Score CDCEvaluate::distance_score(const Position& pos, Color side, Color opponen
 
 
 Score CDCEvaluate::calculate_score(const Position& pos, int remain_moves){
-    Color opponent = pos.due_up() == Red? Black:Red;
+    Color opponent = Opponent[pos.due_up()];
 
     int piece_score = pieces_score(pos, pos.pieces(pos.due_up()))\
             - pieces_score(pos, pos.pieces(opponent));
+
+    int General_dis_score = distance_score(pos, pos.due_up(), opponent, General);
+    int Advisor_dis_score = distance_score(pos, pos.due_up(), opponent, Advisor);
+
+    double piece_weight = 10;
+    double dis_weight = 0.1;
+    return piece_weight*piece_score;
+}
+
+
+Score CDCEvaluate::calculate_lowerbound_score(const Position& pos, int remain_moves){
+    Color opponent = Opponent[pos.due_up()];
+
+    int piece_score = 0;
+    for(Square sq_self: BoardView(pos.pieces(pos.due_up(), FACE_UP))){
+        Piece piece = pos.peek_piece_at(sq_self);
+        if(is_dangerous(pos, sq_self, piece)){
+            continue;
+        }
+        piece_score += Piece_Value[piece.type];
+    }
+
+    piece_score -= pieces_score(pos, pos.pieces(opponent));
+
 
     int General_dis_score = distance_score(pos, pos.due_up(), opponent, General);
     int Advisor_dis_score = distance_score(pos, pos.due_up(), opponent, Advisor);

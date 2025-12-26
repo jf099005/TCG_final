@@ -3,35 +3,41 @@
 // Square Adjacent[32][4];
 // int num_Adjacent[32];
 
-void init_Adjacent_table(){
-    for(Square from = SQ_A1; from <= SQ_H4; from = from+1){
-        int num_destination = 0;
-        for(Direction dir: AllMoveDirections){
-            Square to = from + dir;
-            if(!is_okay(to))
-                continue;
+// void init_Adjacent_table(){
+//     for(Square from = SQ_A1; from <= SQ_H4; from = from+1){
+//         int num_destination = 0;
+//         // debug << "{ ";
+//         for(Direction dir: AllMoveDirections){
+//             Square to = from + dir;
+//             if(!is_okay(to))
+//                 continue;
 
-            if(distance(Square(from), Square(to)) == 1){
-                Adjacent[from][num_destination++] = to;
-            }
-        }
-        num_Adjacent[from] = num_destination;
+//             if(distance(Square(from), Square(to)) == 1){
+//                 Adjacent[from][num_destination++] = to;
+//                 // debug << to <<", ";
+//             }
+//         }
 
-        int num_diagonal = 0;
+//         num_Adjacent[from] = num_destination;
 
-       for(Direction dir: AllDiagonalDirections){
-            Square to = from + dir;
-            if(!is_okay(to))
-                continue;
+//         int num_diagonal = 0;
 
-            if(distance(Square(from), Square(to)) == 2){
-                Diagonal[from][num_diagonal++] = to;
-            }
-       } 
+//         for(Direction dir: AllDiagonalDirections){
+//             Square to = from + dir;
+//             if(!is_okay(to))
+//                 continue;
 
-       num_Diagonal[from] = num_diagonal;
-    }
-}
+//             if(distance(Square(from), Square(to)) == 2){
+//                 Diagonal[from][num_diagonal++] = to;
+//                 // debug << to << ", ";
+//             }
+//         }
+
+//        num_Diagonal[from] = num_diagonal;
+
+//        debug << num_Diagonal[from] <<", ";
+//     }
+// }
 
 
 

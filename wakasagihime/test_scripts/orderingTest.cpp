@@ -74,7 +74,7 @@ int main()
 
         debug << nx_moves[0] <<',' << nx_moves[1];
 
-        int valid_moves = orderer.ordering_move(pos, nx_moves, 1);
+        int valid_moves = orderer.ordering_move(pos, nx_moves, 1, 0);
         debug << "number of valid moves: " << valid_moves << '\n';
         for(int i=0; i<valid_moves; i++){
             debug << nx_moves[i];

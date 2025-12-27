@@ -12,7 +12,7 @@ W_SRC = lib/marisa.cpp lib/cdc.cpp lib/chess.cpp lib/movegen.cpp lib/helper.cpp
 LIB_SRC = ${W_SRC} wakasagihime.cpp
 SOURCES = $(LIB_SRC) $(ADD_SOURCES)
 
-EVAL_SRC = ${W_SRC} EvalHime.cpp
+EVAL_SRC = ${W_SRC} test_scripts/EvalHime.cpp
 EVAL_SOURCES = $(EVAL_SRC) $(ADD_SOURCES)
 
 TT_SRC = ${W_SRC} TTTest.cpp

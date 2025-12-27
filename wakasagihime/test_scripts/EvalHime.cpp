@@ -5,7 +5,7 @@
 #include "lib/marisa.h"
 #include "lib/types.h"
 #include "lib/helper.h"
-#include"AlphaBetaSolver/H/AB_agent.h"
+#include"AB_agent.h"
 // Girls are preparing...
 __attribute__((constructor)) void prepare()
 {
@@ -46,27 +46,22 @@ int main()
      * You SHOULD create new files instead of cramming everything in this one,
      * it MAY affect your readability score.
      */
-    std::string line;
     /* read input board state */
-    while (std::getline(std::cin, line)) {
+    std::string testdata[] = {
+        "k6A/8/8/8 r", 
+        "k5A1/8/8/8 r",
+        "k6A/8/8/7A",
+        "1r1a3A/4P1K1/1Pk2rPn/5e1P r",
+        "1r1a3A/5PK1/2P2rPn/5e1P r",
+        
+    };
+
+    // ACDC agent;
+    for(auto line: testdata) {
+        debug << "------------new data-----------------\n";
         Position pos(line);
-        ACDC agent;
-        agent.remain_hidden_pieces[Red][General] = 0;
-        agent.remain_hidden_pieces[Red][Soldier] = 0;
-        debug << " output pos:\n";
-        debug << pos <<std::endl;
-
-        MoveList<> nx_moves(pos);
-
-        debug << "all moves:" << nx_moves.size() <<std::endl;
-        debug <<"red pieces:" << pos.count(Red) <<", black count:" << pos.count(Black) <<'\n';
-        for(int i=0; i<nx_moves.size(); i++){
-            debug << nx_moves[i];
-            debug <<"\t" << nx_moves[i].from() << '/' << nx_moves[i].to() << '\n';
-        }
-
-        debug << "static evaluation:"<< CDCEvaluate::calculate_score(pos) << std::endl;
-        debug << "Negamax leaf evaluation:" << agent.Negamax(pos, 1, 30) <<std::endl;
+        debug << pos;
+        debug << "calculated score:" << CDCEvaluate::calculate_score(pos, 30) << '\n' << '\n';
 
     }
 }

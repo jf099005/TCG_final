@@ -43,9 +43,6 @@ const int maximum_static_moves = 30;
 inline Move get_move(Position pos_prv, Position pos_cur){
     MoveList<> moves(pos_prv);
     for(Move mv: moves){
-        if(mv.type() == Flipping)
-            continue;
-
         Position copy(pos_prv);
         copy.do_move(mv);
         if(copy.toFEN() == pos_cur.toFEN())

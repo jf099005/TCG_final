@@ -1,7 +1,8 @@
 #include"AB_agent.h"
 #include<iomanip>
 #include<cstdlib>
-// #define TIMING 1
+#define TIMING 1
+#define ORDERING 1
 // #define OUTPUT_RECURSION_TREE 1
 
 inline void swap_moves(MoveList<>& moves, int* moves_score, int i, int j){
@@ -49,7 +50,7 @@ int MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves, bool only
     // for(int i=0; i<valid_moves_num;i++)
     //     debug << moves[i];
 
-
+    #ifdef ORDERING
     for(int i=0; i<valid_moves_num; i++){
         moves_score[i] = evaluate_move(pos, moves[i]);
     }
@@ -61,6 +62,7 @@ int MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves, bool only
             j--;
         }
     }
+    #endif
 
     return valid_moves_num;
 }
@@ -92,7 +94,7 @@ int MoveOrderer::evaluate_move(const Position& pos, Move move){
     if(move.type() == Flipping)
         return basic_flip_move_point;
 
-    PieceType piece_tp = pos.peek_piece_at(move.from()).type;
+    Piece piece = pos.peek_piece_at(move.from());
 
     PieceType target_tp = pos.peek_piece_at(move.to()).type;
 
@@ -108,41 +110,14 @@ int MoveOrderer::evaluate_move(const Position& pos, Move move){
     
     Square sq_to = move.to();
 
-    int mobility = 1;
-    int attack_val = 0;
-    bool threaten = false;
+    int positional_score_before = evaluate_square(pos, move.from(), piece, 1);
+    int positional_score_after = evaluate_square(pos, move.to(), piece, 1);
 
-    for(int adj_dir = 0; adj_dir < num_Adjacent[sq_to] and !threaten; adj_dir++){
-        Square sq_nx = Adjacent[sq_to][adj_dir];
-        Piece nx_piece = pos.peek_piece_at(sq_nx);
+    positional_score_before = (positional_score_before==DANGER? - Piece_Value[piece.type]*4 : positional_score_before);
+    positional_score_after = (positional_score_after == DANGER? - Piece_Value[piece.type]*4: positional_score_after);
 
-        if(sq_nx < 0 || sq_nx >= 32 || (distance(sq_to, sq_nx) > 1) ||\
-             nx_piece.side == pos.due_up() || nx_piece.type == Hidden )
-            continue;
+    return capture_score*4 + positional_score_after - positional_score_before;
 
-        bool can_move = (
-                            nx_piece.type == NO_PIECE ||
-                            (
-                                piece_tp > nx_piece.type && 
-                                nx_piece.type != piece_tp
-                            )
-                        );
-
-        mobility += can_move;
-        threaten |= nx_piece.type > piece_tp && nx_piece.type != Cannon;
-        bool can_attack = piece_tp > nx_piece.type &&\
-                                 !threaten;
-        
-        attack_val += can_attack?Piece_Value[nx_piece.type]:0;
-    }
-
-    capture_score += threaten?
-            -(Piece_Value[piece_tp]):(piece_tp==Cannon?0:(Piece_Value[piece_tp] >> 3));
-    //max: max_piece_value *5 + 20 + 2*
-
-    // debug << "\t\t" << capture_score <<"/" << threaten <<"/" << mobility <<"/" <<attack_val <<'\n';
-
-    return (capture_score)*4 + (threaten? 0 : mobility*5 + attack_val) + normal_move_point;
 }
 
 
@@ -277,7 +252,7 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
             opt = -Negamax(pos_copy, depth-1, remain_moves-1, -beta, -alpha, PAUSE);
         }
     }
-    if(num_valid_moves == 0 && depth <= 0){
+    if(num_valid_moves == 0){
         // num_valid_moves = 1;
         if(prv == PAUSE){
             return CDCEvaluate::calculate_score(pos, remain_moves);

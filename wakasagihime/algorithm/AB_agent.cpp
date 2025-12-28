@@ -3,6 +3,7 @@
 #include<cstdlib>
 #define TIMING 1
 #define ORDERING 1
+#define QUIESCENT_SEARCH 1
 // #define OUTPUT_RECURSION_TREE 1
 
 inline void swap_moves(MoveList<>& moves, int* moves_score, int i, int j){
@@ -124,31 +125,6 @@ int MoveOrderer::evaluate_move(const Position& pos, Move move){
 
 const static int non_capture_penalty = 10;
 
-//return 0 if is not an attack move
-// inline int attack_gain(const Position& pos, Square piece_sq){
-//     int atk_gain = 0;
-
-//     Piece piece = pos.peek_piece_at(piece_sq);
-
-//     int opponent = !piece.side;
-//     assert(opponent == 0 || opponent == 1);
-
-//     for(int idx_sq = 0; idx_sq < num_Adjacent[piece_sq]; idx_sq++){
-//         Square sq_adj = Adjacent[piece_sq][idx_sq];
-//         Piece adj = pos.peek_piece_at(sq_adj);
-//         int pt = (adj.side == opponent && piece.type > adj.type)?Piece_Value[adj.type]:0;
-//         atk_gain = std::max(atk_gain, pt);
-//     }
-//     return atk_gain;
-// }
-
-// inline  bool is_unstable(const Position& pos, Move prv_move){
-//     int atk_gain = attack_gain(pos, prv_move.to());
-//     return is_dangerous(pos, prv_move.to()) or (atk_gain >= Piece_Value[Elephant]) or\
-//                 (atk_gain > 0 and pos.count(pos.due_up()) <= 3);
-// };
-
-
 double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, double beta, Move prv, Square sq_danger){
     #ifdef TIMING
     if(std::chrono::steady_clock::now() > deadline){
@@ -209,8 +185,10 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
         std::cin.get();    
         #endif
 
+        #ifndef QUIESCENT_SEARCH
         int score =  CDCEvaluate::calculate_score(pos, remain_moves);
         return score;
+        #endif
 
         if(!is_unstable(pos) or depth <= lim_extend_depth){
             int score =  CDCEvaluate::calculate_score(pos, remain_moves);
@@ -261,19 +239,22 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
         return -Negamax(pos, depth-1, remain_moves-1, -beta, -alpha, PAUSE);
         // return CDCEvaluate::calculate_score(pos, remain_moves);
     }
-    // #ifdef TT_H
-    
-    // if(tt_lookup->depth > 0){
-    //     for(int i=0; i<nx_moves.size(); i++){
-    //         if(nx_moves[i] == tt_lookup->opt_move){
-    //             Move tmp = nx_moves[0];
-    //             nx_moves[0] = nx_moves[i];
-    //             nx_moves[i] = tmp;
-    //         }
-    //     }
-    // }
 
-    // #endif
+    #ifdef TT_H
+    
+    #ifdef ORDERING
+    if(tt_lookup->depth > 0){
+        for(int i=0; i<nx_moves.size(); i++){
+            if(nx_moves[i] == tt_lookup->opt_move){
+                Move tmp = nx_moves[0];
+                nx_moves[0] = nx_moves[i];
+                nx_moves[i] = tmp;
+            }
+        }
+    }
+    #endif
+
+    #endif
 
     int num_visited = 0;
 
@@ -494,11 +475,10 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
 Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
 
     reset();
+    max_visited_depth = 2;
     // given_time = 1000;
 
     double time_constraint = given_time;
-
-
 
     auto start = std::chrono::steady_clock::now();
 
@@ -516,7 +496,7 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
     Move opt = nx_moves[0];
 
     while(true){
-        reset();
+        // reset();
         debug << "depth " << depth <<std::endl;
 
         Move search_solution = opt_solution_with_fixed_depth(pos, depth, remain_moves);
@@ -541,11 +521,12 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
         // }
         debug << "search finished\n";
         debug << '\t' << search_solution;
-        trace_PV(pos, depth);
+        // trace_PV(pos, depth);
         opt = search_solution;
         depth += 2;
-        if(depth > 12)
-            break;
+        max_visited_depth += 2;
+        // if(depth > 12)
+        //     break;
     }
     return opt;
 }

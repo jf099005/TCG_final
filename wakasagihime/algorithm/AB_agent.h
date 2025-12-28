@@ -66,7 +66,7 @@ inline bool is_unstable(const Position& pos){
 class ACDC{
     public:
 
-        const int lim_extend_depth = -30;
+        const int lim_extend_depth = -6;
         ACDC(){
             // solver_color = color;
             // depth_limit = depth;
@@ -89,6 +89,22 @@ class ACDC{
             // std::fill(remain_hidden_pieces, remain_pieces + 2*8, 0);
         };
 
+        void check(Position pos){
+            int total_hidden = 0;
+            for(int i=Black; i<=Red; i++){
+                for(int j=General; j<= Soldier; j++){
+                    total_hidden += remain_hidden_pieces[i][j];
+                }
+            }
+            assert(total_hidden == pos.count(Hidden));
+            debug << "check success\n";
+        }
+
+        inline void flipping_piece(Piece piece){
+            remain_hidden_pieces[piece.side][piece.type]--;
+            
+        }
+
         ~ACDC(){
             delete orderer;
             delete TT;
@@ -107,6 +123,7 @@ class ACDC{
         double start_time;
         std::chrono::steady_clock::time_point deadline;
         
+        int max_visited_depth;
         Move opt_solution(Position pos, double given_time, int remain_moves);
 
         unsigned short remain_hidden_pieces[2][8];

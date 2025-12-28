@@ -74,59 +74,83 @@ int main()
     int current_step = 0;
 
     std::string game_record_path = "/mnt/20F408ADF408876E/TCG/TCG_final/wakasagihime/record.txt";
+    Position prv_pos;
     std::ofstream record_ofs;
-
     record_ofs.open(game_record_path);
 
-    Position prv_pos;
-
     while (std::getline(std::cin, line)) {
+
         Position pos(line);
 
-        record_ofs << pos;
-        record_ofs <<"\t" << pos.toFEN()<<"\n\n";
 
-        if(pos.time_left() < 0){
-            continue;
-        }
         // MoveList moves(pos);
         auto start = std::chrono::high_resolution_clock::now();
 
-        if(pos.count(Hidden) == 32){
-            debug << " a new game\n";
+        if(pos.count(FACE_UP) == 32 || pos.count(Hidden) == 32){
+            debug << " ===========a new game=============\n";
             current_step = 0;
             remain_moves = maximum_static_moves;
         }
+        else{
+            if(pos.count(FACE_UP) != face_up_pieces){
+                remain_moves = maximum_static_moves;
+            }
 
-        if(pos.count(FACE_UP) != face_up_pieces){
-            remain_moves = maximum_static_moves;
+            Move prv_move = get_move(prv_pos, pos);
+            if(prv_move.type() == Flipping){
+                Square flipping_sq = prv_move.from();
+                acdc.flipping_piece( pos.peek_piece_at(flipping_sq) );
+                acdc.check(pos);
+            }
         }
+
+        record_ofs << "@ step " << current_step <<'\n';
+        record_ofs << pos;
+        record_ofs <<"\t" << pos.toFEN()<<"\n\n";
 
         debug << pos << std::endl;
         debug << "\t remain time:" << pos.time_left() <<std::endl;
         debug << "\t remain moves:" << remain_moves <<std::endl;
-        record_ofs << "\t remain moves:" << remain_moves <<std::endl;
+
+        record_ofs << "\t remain static moves:" << remain_moves <<std::endl;
+        
+        if(pos.time_left() < 0){
+            prv_pos = pos;
+            remain_moves--;
+            current_step++;
+            continue;
+        }
 
         double time_constraint = 1.0;
 
-        int exp_depth = 6;
-        // info << acdc.opt_solution_exp(pos, exp_depth, remain_moves);
         Move opt = acdc.opt_solution(pos, time_constraint, remain_moves);
-        info << opt;
-        record_ofs << opt;
-        record_ofs << "\tsuccess rate: " << std::fixed << std::setprecision(3) << double(acdc.correct_prediction) / \
-                            double(acdc.correct_prediction + acdc.fail_prediction) << '\n';
 
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         debug << "time:" << double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den << std::endl;
+        
+        record_ofs << "optimal move:" << opt;
+        record_ofs << "correct prediction:" << acdc.correct_prediction << '\n';
+        record_ofs << "failed prediction:" << acdc.fail_prediction << "\n";
+        record_ofs << "\tsuccess rate: " << std::fixed << std::setprecision(3) << double(acdc.correct_prediction) / \
+                            double(acdc.correct_prediction + acdc.fail_prediction) << '\n';
+        record_ofs << "time:" << double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den << std::endl;
 
+        record_ofs << "depth: " << acdc.max_visited_depth << '\n';
+
+        record_ofs << "visited positions:" << acdc.visited_states <<'\n';
+        record_ofs << "visited criticals:" << acdc.visited_critical_states << '\n'; 
         // debug << "eval:" << CDCEvaluate::calculate_score(pos, 30) << "/" << \
         //         CDCEvaluate::distance_score(pos, Red, Black, ALL_PIECES) <<std::endl;
 
         // #ifdef TT_H
         // acdc.trace_PV(pos, exp_depth);
         // #endif
-        remain_moves -= 2;
+        face_up_pieces = pos.count(FACE_UP);
+        remain_moves --;
+        current_step++;
+        prv_pos = pos;
+        info << opt;
+
     }
 }

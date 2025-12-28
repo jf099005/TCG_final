@@ -78,6 +78,13 @@ Score CDCEvaluate::calculate_score(const Position& pos, int remain_moves){
         int side_score = distance_score(pos, pos.due_up(), opponent, static_cast<PieceType>(piecetype));
         int opponent_score = distance_score(pos, opponent, pos.due_up(), static_cast<PieceType>(piecetype));
         bool essential_pieces = (piecetype == General || piecetype == Advisor || piecetype == Elephant || piecetype == Cannon);
+        // if(side_score < 0 || opponent_score < 0){
+        //     debug << "piece:" << piece_name[piecetype] <<"\n";
+        //     debug << "side score:" << side_score <<", opponent:" << opponent_score << '\n';
+        //     debug << pos;
+        // }
+        // assert(side_score >= 0);
+        // assert(opponent_score >= 0);
         side_score = side_score << (essential_pieces*2);
         opponent_score = opponent_score << (essential_pieces*2);
         // side_dis_score += side_score;

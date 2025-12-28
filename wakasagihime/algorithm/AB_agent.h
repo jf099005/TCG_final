@@ -23,7 +23,7 @@ class MoveOrderer{
 };
 
 const int MAX_DEPTH = 100;
-const int TT_bits = 28;
+const int TT_bits = 25;
 
 
 

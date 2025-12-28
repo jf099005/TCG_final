@@ -157,7 +157,7 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
         return 0;
     }
 
-    double opt = -CDCEvaluate::score_mx;
+    double opt = alpha;//-CDCEvaluate::score_mx;
 
     Move opt_move;
 
@@ -233,7 +233,7 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     
     #ifdef ORDERING
     if(tt_lookup->depth > 0){
-        for(int i=0; i<nx_moves.size(); i++){
+        for(int i=0; i<num_valid_moves; i++){
             if(nx_moves[i] == tt_lookup->opt_move){
                 Move tmp = nx_moves[0];
                 nx_moves[0] = nx_moves[i];
@@ -252,9 +252,9 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     #endif
 
 
-    for(int move_idx = 1; move_idx < num_valid_moves; move_idx++){
+    for(int move_idx = 0; move_idx < num_valid_moves; move_idx++){
         
-        int bound = std::max(opt, beta) + 1;
+        int bound = std::max(opt, beta) + 0.1;
         Move nx_move = nx_moves[move_idx];
         
         #ifdef OUTPUT_RECURSION_TREE

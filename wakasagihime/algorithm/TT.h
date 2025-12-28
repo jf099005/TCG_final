@@ -16,7 +16,7 @@ struct TT_info{
     Move opt_move;
 
     TT_info(){
-        score = 114514;
+        score = 1145140;
         depth = -114;
         is_exact_value = false;
     };

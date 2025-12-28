@@ -130,8 +130,6 @@ int main()
     std::string basic_record_path = "/mnt/20F408ADF408876E/TCG/TCG_final/wakasagihime/record/record_of_" + algorithm_name + ".txt";
     std::string game_record_path = generate_timestamped_record_path(basic_record_path);
     Position prv_pos;
-    std::ofstream record_ofs;
-    record_ofs.open(game_record_path);
 
     bool is_first_board = false;
 
@@ -151,7 +149,6 @@ int main()
         }
         else if(!is_first_board){
             debug << " ===========a new game=============\n";
-            record_ofs << "====================New Game=================\n\n\n";
             current_step = 0;
             remain_moves = maximum_static_moves;
             is_first_board = true;
@@ -179,16 +176,10 @@ int main()
                 }
             }
         }
-
-        record_ofs << "@ step " << current_step <<'\n';
-        record_ofs << pos;
-        record_ofs <<"\t" << pos.toFEN()<<"\n\n";
-
         debug << pos << std::endl;
         debug << "\t remain time:" << pos.time_left() <<std::endl;
         debug << "\t remain moves:" << remain_moves <<std::endl;
 
-        record_ofs << "\t remain static moves:" << remain_moves <<std::endl;
         
         if(pos.time_left() < 0){
             prv_pos = pos;
@@ -204,22 +195,10 @@ int main()
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
-        record_ofs << "depth: " << acdc.max_visited_depth << '\n';
-        
-        record_ofs << "optimal move:" << opt;
-        record_ofs << "correct prediction:" << acdc.correct_prediction << '\n';
-        record_ofs << "failed prediction:" << acdc.fail_prediction << "\n";
-        record_ofs << "success rate: " << std::fixed << std::setprecision(3) << double(acdc.correct_prediction) / \
-                            double(acdc.correct_prediction + acdc.fail_prediction) << '\n';
-        
-        record_ofs << "time:" << double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den << std::endl;
         debug << "time:" << double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den << std::endl;
 
-
-        record_ofs << "visited positions:" << acdc.visited_states <<'\n';
-        record_ofs << "visited criticals:" << acdc.visited_critical_states << '\n'; 
-
         face_up_pieces = pos.count(FACE_UP);
+        acdc.trace_PV(pos, acdc.max_visited_depth);
         remain_moves --;
         current_step++;
         prv_pos = pos;

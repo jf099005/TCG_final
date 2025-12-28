@@ -4,6 +4,7 @@
 #define TIMING 1
 #define ORDERING 1
 #define QUIESCENT_SEARCH 1
+// #define NEGASCOUT 1
 // #define OUTPUT_RECURSION_TREE 1
 
 inline void swap_moves(MoveList<>& moves, int* moves_score, int i, int j){
@@ -125,6 +126,7 @@ int MoveOrderer::evaluate_move(const Position& pos, Move move){
 
 const static int non_capture_penalty = 10;
 
+//in fact, NegaScout
 double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, double beta, Move prv, Square sq_danger){
     #ifdef TIMING
     if(std::chrono::steady_clock::now() > deadline){
@@ -155,7 +157,8 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
         return 0;
     }
 
-    double opt = alpha;
+    double opt = -CDCEvaluate::score_mx;
+
     Move opt_move;
 
     #ifdef TT_H
@@ -208,20 +211,8 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     int num_valid_moves = nx_moves.size();
     num_valid_moves = orderer->ordering_move(pos, nx_moves, critical_search, no_flipping);
 
-    if(depth <= lim_extend_depth){
-        debug << "deep unstable board:\n";
-        debug << pos;
-        debug << pos.toFEN() << '\n';
-
-        debug << "is_unstable:" << is_unstable(pos) << '\n';
-        debug << "===history===\n";
-        pos.out_history();
-        debug << "------\n";
-    }
-
-
     if(critical_search){
-        if(prv == Move(0)){
+        if(prv == PAUSE){
             opt = CDCEvaluate::calculate_score(pos, remain_moves);
         }
         else{
@@ -231,13 +222,11 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
         }
     }
     if(num_valid_moves == 0){
-        // num_valid_moves = 1;
         if(prv == PAUSE){
             return CDCEvaluate::calculate_score(pos, remain_moves);
         }
         pos.pass_turn();
         return -Negamax(pos, depth-1, remain_moves-1, -beta, -alpha, PAUSE);
-        // return CDCEvaluate::calculate_score(pos, remain_moves);
     }
 
     #ifdef TT_H
@@ -256,22 +245,38 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
 
     #endif
 
-    int num_visited = 0;
+    int num_visited = 1;
 
     #ifdef OUTPUT_RECURSION_TREE
     debug << "\tsearch branch:" << num_valid_moves <<'\n';
     #endif
 
-    for(int move_idx = 0; move_idx < num_valid_moves; move_idx++){
-        //
+
+    for(int move_idx = 1; move_idx < num_valid_moves; move_idx++){
+        
+        int bound = std::max(opt, beta) + 1;
         Move nx_move = nx_moves[move_idx];
-        // if(nx_move.type() == Flipping and depth <= 2 and nx_moves[0].type() != Flipping){
-        //     continue;
-        // }
+        
         #ifdef OUTPUT_RECURSION_TREE
         debug << "\t\tsearch the branche of " << nx_move <<'\n';
         #endif
-        double v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -opt);
+
+        #ifdef NEGASCOUT
+        //Scout search
+        double v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -bound, -std::max(alpha, opt));
+
+        if(v > opt){
+            if(bound == beta || v >= beta){
+                opt = v;
+            }
+            else{
+                v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -v);
+            }
+        }
+        #else
+        double v= Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -opt);
+        #endif
+
         if(v > opt){
             opt = v;
             opt_move = nx_move;

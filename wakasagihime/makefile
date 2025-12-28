@@ -55,3 +55,5 @@ MoveEvalTest:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/move_eval.cpp -fsanitize=address,undefined
 Test:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/test.cpp -fsanitize=address,undefined
+trace:
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/trace.cpp -fsanitize=address,undefined

@@ -1,17 +1,14 @@
 #ifndef TT_H
 #define TT_H
 
-#include "lib/chess.h"
-#include "lib/marisa.h"
-#include "lib/types.h"
-#include "lib/helper.h"
+#include "evaluator.h"
 
 const int piece_type_numbers = 7;
 
 
 struct TT_info{
-    double score;
-    short depth;
+    Score score;
+    int8_t depth;
     bool is_exact_value;
     Move opt_move;
 
@@ -33,7 +30,7 @@ struct TT_info{
 class CDCTranspositionTable{
     public:
 
-        CDCTranspositionTable(int hash_bits = 32);
+        CDCTranspositionTable(int hash_bits);
         ~CDCTranspositionTable();
 
         TT_info* query(const Position& pos, int depth);

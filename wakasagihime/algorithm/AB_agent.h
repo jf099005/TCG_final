@@ -21,7 +21,10 @@ class MoveOrderer{
         {};
         //return the number of valid moves, and the movelist is sorted
         int ordering_move(const Position& pos, MoveList<> & moves, bool only_critical_move, bool skip_flipping);
+        
         int evaluate_move(const Position& pos, Move move);
+        int evaluate_flipping(const Position& pos, Color side, Square sq, unsigned short remain_hidden_pieces[2][8], int remain_hidden_pieces_num);
+
         bool is_critical_move(const Position& pos, Move mv);
 
     //private:
@@ -29,8 +32,6 @@ class MoveOrderer{
 
 const int MAX_DEPTH = 100;
 const int TT_bits = 28;
-
-
 
 inline bool cannon_capture(const Position& pos){
     MoveList<> nx_moves(pos, Cannon);
@@ -116,7 +117,7 @@ class ACDC{
 
         inline void flipping_piece(Piece piece){
             remain_hidden_pieces[piece.side][piece.type]--;
-            
+            remain_hidden_pieces_number--;
         }
 
         ~ACDC(){

@@ -121,6 +121,7 @@ inline std::string piece_name[7] = {
     "Soldier"
 };
 
+// total:20 + 25*2 + 18*2 + 5*2 + 3*2 + 18*2 + 1*5 = 20+(69)*2+5=163
 inline int Piece_Value[7] = {
     20, 25, 18, 5, 3, 18, 1
 };

@@ -118,6 +118,22 @@ int MoveOrderer::evaluate_move(const Position& pos, Move move){
 
 }
 
+//use int, less precision but faster
+int MoveOrderer::evaluate_flipping(const Position& pos, Color side, Square sq, unsigned short remain_hidden_pieces[2][8], int remain_hidden_pieces_num){
+    int total_score = 0;
+    for(int color = Black; color <= Red; color++){
+        for(int type = General; type <= Soldier; type++){
+            int branch_mass = remain_hidden_pieces[color][type];
+            if(!branch_mass)
+                continue;
+            int branch_score = branch_mass*evaluate_square(pos, sq, Piece(static_cast<Color>(color), static_cast<PieceType>(type)), 0);
+            branch_score = (color == side)? branch_score : -branch_score;
+            total_score += branch_score;
+        }
+    }
+    return total_score/remain_hidden_pieces_num;
+}
+
 
 
 const static int non_capture_penalty = 10;
@@ -190,7 +206,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
         #endif
 
         if(!is_unstable(pos) or depth <= lim_extend_depth){
-            int score =  CDCEvaluate::calculate_score(pos, remain_moves, this->remain_hidden_pieces);
+            int score =  CDCEvaluate::calculate_score(pos, remain_moves, this->remain_hidden_pieces, this->remain_hidden_pieces_number);
             // TT->write(tt_lookup, depth, score, opt_move, true);
             return score;
         }
@@ -209,7 +225,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
 
     if(critical_search){
         if(prv == PAUSE){
-            opt = CDCEvaluate::calculate_score(pos, remain_moves, this->remain_hidden_pieces);
+            opt = CDCEvaluate::calculate_score(pos, remain_moves, this->remain_hidden_pieces, this->remain_hidden_pieces_number);
         }
         else{
             Position pos_copy(pos);
@@ -222,7 +238,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
 
     if(num_valid_moves == 0){
         if(prv == PAUSE){
-            return CDCEvaluate::calculate_score(pos, remain_moves-1, this->remain_hidden_pieces);
+            return CDCEvaluate::calculate_score(pos, remain_moves-1, this->remain_hidden_pieces, this->remain_hidden_pieces_number);
         }
         pos.pass_turn();
         return -Negamax(pos, depth-1, remain_moves-1, -beta, -alpha, PAUSE);
@@ -372,13 +388,13 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
     
 
 
-    int C=0;
-    for(int piecetype = General; piecetype <= Soldier; piecetype++)
-        for(int color = Black; color <= Red; color++)
-            C += remain_hidden_pieces[color][piecetype];
+    int C = remain_hidden_pieces_number;
+    // for(int piecetype = General; piecetype <= Soldier; piecetype++)
+    //     for(int color = Black; color <= Red; color++)
+    //         C += remain_hidden_pieces[color][piecetype];
 
     //only for debugging, should be removed after this assertion does not happen again
-    assert(C==remain_hidden_pieces_number);
+    // assert(C==remain_hidden_pieces_number);
 
     // debug << "start:" << General <<", end:" << Soldier <<std::endl;
 
@@ -570,8 +586,8 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
         opt = search_solution;
         depth += 2;
         max_visited_depth += 2;
-        // if(depth > 4)
-        //     break;
+        if(depth > MAX_DEPTH)
+            break;
     }
     return opt;
 }
@@ -588,7 +604,7 @@ void ACDC::trace_PV(Position pos, int depth){
         debug << pos;
         debug << pos.toFEN() << std::endl;
         debug << "\t TT score:" << tt_lookup->score << '\n';
-        debug <<  "\t score:" << CDCEvaluate::calculate_score(pos, 30, this->remain_hidden_pieces) <<std::endl;
+        debug <<  "\t score:" << CDCEvaluate::calculate_score(pos, 30, this->remain_hidden_pieces, this->remain_hidden_pieces_number) <<std::endl;
         debug << "\t opt move: " << tt_lookup->opt_move;
         pos.do_move( tt_lookup->opt_move );
         depth--;
@@ -600,7 +616,7 @@ void ACDC::trace_PV(Position pos, int depth){
     debug << "ended\n";
     debug << pos;
     debug << pos.toFEN() << std::endl;
-    debug << '\t' << "score:" << CDCEvaluate::calculate_score(pos, 30, this->remain_hidden_pieces) << std::endl;
+    debug << '\t' << "score:" << CDCEvaluate::calculate_score(pos, 30, this->remain_hidden_pieces, this->remain_hidden_pieces_number) << std::endl;
     debug << "================================\n";
 }
 

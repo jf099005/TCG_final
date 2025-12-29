@@ -10,7 +10,6 @@
 
 typedef float Score;
 
-
 inline int evaluate_square(const Position& pos, Square sq, Piece piece, int basic_mobility){
     int mobility = basic_mobility;
     int attack_val = 0;
@@ -58,19 +57,8 @@ inline int evaluate_square(const Position& pos, Square sq, Piece piece, int basi
     return (threaten? DANGER : mobility*2 + attack_val + control_val*2);
 }
 
-inline int evaluate_hidden_square(const Position& pos, Square sq, Color side, unsigned short remain_hidden_pieces[2][8]){
-    int total_score = 0;
-    for(int color = Black; color <= Red; color++){
-        for(int type = General; type <= Soldier; type++){
-
-        }
-    }
-    return 0;
-}
-
-
 namespace CDCEvaluate{
-    const double score_mx = 1145140;
+    const double score_mx = 3000;
 
 
     const int full_distance_score_per_piece[7] = {
@@ -84,18 +72,21 @@ namespace CDCEvaluate{
     };
 
     const int full_distance_score[7] = {
-        (20*5+10)*1,//General
-        (20+10*2)*2, //Advisor
-        (20*3+10*2)*2, //Elephant
-        (20*5+10*2)*2, //Chariot
+        (20*5+10)*1,//General, 110
+        (20+10*2)*2, //Advisor, 80
+        (20*3+10*2)*2, //Elephant, 160
+        (20*5+10*2)*2, //Chariot, 
         (20*7+10*2)*2, //Horse
         20*9*2, //Cannon
         (20*9+10*5)*5 //Soldier
     };
 
-    Score distance_score(const Position& pos, Color side, Color opponent, PieceType opponent_type);
+    Score calculate_score(const Position& pos, int remain_moves, unsigned short remain_hidden_pieces[2][8], int remain_hidden_pieces_num);
 
-    Score calculate_score(const Position& pos, int remain_moves, unsigned short remain_hidden_pieces[2][8]);
+    Score hidden_pieces_score(const Position& pos, int remain_moves, unsigned short remain_hidden_pieces[2][8]);
+
+    Score distance_score(const Position& pos, Color side, Color opponent, PieceType opponent_type, unsigned short remain_hidden_pieces[2][8]);
+
 
     Score pawn_evaluate(const Position& pos, Color side, unsigned short remain_hidden_pieces[2][8]);
 

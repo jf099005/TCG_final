@@ -57,6 +57,7 @@ void CDCTranspositionTable::write(const Position& pos, int depth, double score, 
 
 
 void CDCTranspositionTable::write(TT_info* info_ptr, int depth, double score, Move opt_move, bool is_exact){
+    assert(-100 <= depth && depth <= 100);
     info_ptr->score = score;
     info_ptr->depth = depth;
     info_ptr->opt_move = opt_move; //= TT_info(score, depth, opt_move);

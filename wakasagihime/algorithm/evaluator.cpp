@@ -1,23 +1,60 @@
 #include"evaluator.h"
 
-Score CDCEvaluate::distance_score(const Position& pos, Color side, Color opponent, PieceType opponent_tp){
-    
-    // const int full_score_per_piece[7] = {
-    //     20*6+10,//General
-    //     20+10*2, //Advisor
-    //     20*3+10*2, //Elephant
-    //     20*5+10*2, //Chariot
-    //     20*7+10*2, //Horse
-    //     20*9, //Cannon
-    //     20*9+10*5 //Soldier
-    // };
+Score CDCEvaluate::calculate_score(const Position& pos, int remain_moves, unsigned short remain_hidden_pieces[2][8], int remain_hidden_pieces_num){
+    Color opponent = Opponent[pos.due_up()];
 
+    int piece_score = pieces_score(pos, pos.pieces(pos.due_up()))\
+            - pieces_score(pos, pos.pieces(opponent));
+    
+    // |piece_score| <= 163
+    piece_score += hidden_pieces_score(pos, remain_moves, remain_hidden_pieces);
+
+    // int General_dis_score = distance_score(pos, pos.due_up(), opponent, General);
+    // int Advisor_dis_score = distance_score(pos, pos.due_up(), opponent, Advisor);
+
+    //dis score for each stone: 
+    double dis_score = 0;
+    // int side_dis_score = 0;
+    // int opponent_dis_score = 0;
+    for(int piecetype = General; piecetype <= Soldier; piecetype = piecetype + 1){
+        int side_score = distance_score(pos, pos.due_up(), opponent, static_cast<PieceType>(piecetype), remain_hidden_pieces);
+        int opponent_score = distance_score(pos, opponent, pos.due_up(), static_cast<PieceType>(piecetype), remain_hidden_pieces);
+        bool essential_pieces = (piecetype == General || piecetype == Advisor || piecetype == Elephant || piecetype == Cannon);
+        side_score = side_score << (essential_pieces*2);
+        opponent_score = opponent_score << (essential_pieces*2);
+        dis_score += (Piece_Value[piecetype])*double(side_score - opponent_score) / full_distance_score[piecetype];
+                     // max: piecevalue* (dis_Score / max_dis_score) = piecevalue
+    }
+
+    // |dis_score| <= (piecevalue of all pieces)<<2: 20+25+18+5+3+18+1<<2 = 90*4 = 360
+
+    double piece_weight = 10;
+    double dis_weight = 1;
+
+    // |pawn score| <= 1005
+    Score pawn_score = pawn_evaluate(pos, pos.due_up(), remain_hidden_pieces);
+    pawn_score -= pawn_evaluate(pos, opponent, remain_hidden_pieces);
+
+    //163*10 + 360 + 1005 ~=1630+1365 ~= 3000
+    int total_score = piece_weight*piece_score + dis_weight*dis_score + pawn_score;
+    if(total_score < -score_mx || total_score > score_mx){
+        debug << "total score out of bound\n";
+        debug << pos<<"\n";
+        debug << "\ttotal score:" << total_score <<"\n";
+        debug <<'\t' << piece_score  << "\t" << dis_score <<  '\t' <<  pawn_score <<"\n";
+    }
+    assert(-score_mx <= total_score && total_score <= score_mx);
+    return total_score;
+}
+
+Score CDCEvaluate::distance_score(const Position& pos, Color side, Color opponent, PieceType opponent_tp, unsigned short remain_hidden_pieces[2][8]){
     Score total_score = 0;
 
     assert(opponent_tp != ALL_PIECES);
     
     total_score += full_distance_score_per_piece[opponent_tp]*\
-                        (InitialPiecesNumber[opponent_tp] - pos.count(opponent, opponent_tp));
+                        (InitialPiecesNumber[opponent_tp] - pos.count(opponent, opponent_tp)\
+                                - remain_hidden_pieces[opponent][opponent_tp]);
 
     for(Square sq_opponent: BoardView(pos.pieces(opponent, opponent_tp))){
         int distance_score = 0;
@@ -60,55 +97,22 @@ Score CDCEvaluate::distance_score(const Position& pos, Color side, Color opponen
     return total_score;
 }
 
-
-Score CDCEvaluate::calculate_score(const Position& pos, int remain_moves, unsigned short remain_hidden_pieces[2][8]){
-    Color opponent = Opponent[pos.due_up()];
-
-    int piece_score = pieces_score(pos, pos.pieces(pos.due_up()))\
-            - pieces_score(pos, pos.pieces(opponent));
-
-    // int General_dis_score = distance_score(pos, pos.due_up(), opponent, General);
-    // int Advisor_dis_score = distance_score(pos, pos.due_up(), opponent, Advisor);
-
-    //dis score for each stone: 
-    double dis_score = 0;
-    int side_dis_score = 0;
-    int opponent_dis_score = 0;
-    for(int piecetype = General; piecetype <= Soldier; piecetype = piecetype + 1){
-        int side_score = distance_score(pos, pos.due_up(), opponent, static_cast<PieceType>(piecetype));
-        int opponent_score = distance_score(pos, opponent, pos.due_up(), static_cast<PieceType>(piecetype));
-        bool essential_pieces = (piecetype == General || piecetype == Advisor || piecetype == Elephant || piecetype == Cannon);
-        // if(side_score < 0 || opponent_score < 0){
-        //     debug << "piece:" << piece_name[piecetype] <<"\n";
-        //     debug << "side score:" << side_score <<", opponent:" << opponent_score << '\n';
-        //     debug << pos;
-        // }
-        // assert(side_score >= 0);
-        // assert(opponent_score >= 0);
-        side_score = side_score << (essential_pieces*2);
-        opponent_score = opponent_score << (essential_pieces*2);
-        // side_dis_score += side_score;
-        // opponent_dis_score += opponent_score;
-        // dis_score += (side_score - opponent_score);
-        // debug << "\npiecetype " << piece_name[piecetype] <<":\n";
-        // debug << "\tpositive dis score: " << side_score <<", negative:" << opponent_score <<'\n';
-        // debug << "\tnormalized positive dis score: " << side_score/Piece_Value[piecetype]\
-        //      <<", negative:" << opponent_score/Piece_Value[piecetype] <<'\n';
-
-        dis_score += (Piece_Value[piecetype])*double(side_score - opponent_score) / full_distance_score[piecetype];
+//all pieces score: 
+//adjust depend on PieceValue board
+Score CDCEvaluate::hidden_pieces_score(const Position& pos, int remain_moves, unsigned short remain_hidden_pieces[2][8]){
+    int total_score = 0;
+    for(int color = Black; color <= Red; color++){
+        bool consistent = (color == pos.due_up());
+        for(int type = General; type <= Soldier; type++){
+            total_score += remain_hidden_pieces[color][type]*\
+                                (consistent? Piece_Value[type]:-Piece_Value[type]);
+        }
     }
-
-    double piece_weight = 10;
-    double dis_weight = 1;
-
-    Score pawn_score = pawn_evaluate(pos, pos.due_up(), remain_hidden_pieces);
-    pawn_score -= pawn_evaluate(pos, opponent, remain_hidden_pieces);
-
-    // debug << "piece score: " << piece_score << ", distance score:" << dis_score << '\n';
-    // return piece_weight*piece_score + dis_weight*dis_score;
-    return piece_weight*piece_score + dis_weight*dis_score + pawn_score;
+    return total_score;
 }
 
+
+//-100~5
 Score CDCEvaluate::pawn_evaluate(const Position& pos, Color side, unsigned short remain_hidden_pieces[2][8]){
     Color opponent = Opponent[side];
     bool opponent_General_exist = pos.count(opponent, General) || remain_hidden_pieces[opponent][General];

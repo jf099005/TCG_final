@@ -61,7 +61,7 @@ Score CDCEvaluate::distance_score(const Position& pos, Color side, Color opponen
 }
 
 
-Score CDCEvaluate::calculate_score(const Position& pos, int remain_moves){
+Score CDCEvaluate::calculate_score(const Position& pos, int remain_moves, unsigned short remain_hidden_pieces[2][8]){
     Color opponent = Opponent[pos.due_up()];
 
     int piece_score = pieces_score(pos, pos.pieces(pos.due_up()))\
@@ -101,7 +101,70 @@ Score CDCEvaluate::calculate_score(const Position& pos, int remain_moves){
     double piece_weight = 10;
     double dis_weight = 1;
 
-    // debug << "piece score: " << piece_score << ", distance score:" << dis_score << '\n';
+    Score pawn_score = pawn_evaluate(pos, pos.due_up(), remain_hidden_pieces);
+    pawn_score -= pawn_evaluate(pos, opponent, remain_hidden_pieces);
 
-    return piece_weight*piece_score + dis_weight*dis_score;
+    // debug << "piece score: " << piece_score << ", distance score:" << dis_score << '\n';
+    // return piece_weight*piece_score + dis_weight*dis_score;
+    return piece_weight*piece_score + dis_weight*dis_score + pawn_score;
+}
+
+Score CDCEvaluate::pawn_evaluate(const Position& pos, Color side, unsigned short remain_hidden_pieces[2][8]){
+    Color opponent = Opponent[side];
+    bool opponent_General_exist = pos.count(opponent, General) || remain_hidden_pieces[opponent][General];
+    int safe_pawns = 0;
+    int danger_pawns = 0;
+    int free_pawns = 0;
+    bool attack_opponent_General = false;
+
+    for(Square sq: BoardView( pos.pieces(side, Soldier)) ){
+        bool is_safe = true;
+        for(int adj_idx=0; adj_idx < num_Adjacent[sq] && is_safe; adj_idx++){
+            Piece adj_piece = pos.peek_piece_at( Adjacent[sq][adj_idx] );
+            is_safe &=  adj_piece.side == side || adj_piece.side == NO_COLOR ||\
+                        (adj_piece.side == opponent && \
+                            adj_piece.type > Soldier && adj_piece.type != Cannon);
+
+            attack_opponent_General |= is_safe && (adj_piece.side == opponent && adj_piece.type == General);
+        }
+
+        bool is_free = true;
+        for(int diag_idx=0; diag_idx < num_Diagonal[sq] && is_free; diag_idx++){
+            Piece diag_piece = pos.peek_piece_at( Diagonal[sq][diag_idx] );
+            is_free &= diag_piece.side == side || diag_piece.side == NO_COLOR ||\
+                        (diag_piece.side == opponent && \
+                            diag_piece.type > Soldier && diag_piece.type != Cannon);
+        }
+
+        safe_pawns += is_safe;
+        danger_pawns += !is_safe;
+        free_pawns += is_safe && is_free;
+    }
+
+    int valid_pawns = safe_pawns + (danger_pawns >> 2) + remain_hidden_pieces[side][Soldier];
+    valid_pawns = std::max(valid_pawns, int(danger_pawns > 0));
+    if(!opponent_General_exist){
+        return valid_pawns;
+    }
+
+    if(valid_pawns == 5){
+        return 0;
+    }
+
+    static constexpr int penalty_table[] = {
+        -1000,   // 0
+        -500,  // 1
+        -10,  // 2
+        -2,  // 3
+        -1   // 4
+    };
+
+    bool cannot_win = valid_pawns == 0 && pos.count(side, Cannon) == 0 && remain_hidden_pieces[side][Cannon] == 0;
+
+
+    return penalty_table[valid_pawns] + free_pawns;
+}
+
+Score CDCEvaluate::cannon_evaluate(const Position& pos, Color side, unsigned short remain_hidden_pieces[2][8]){
+    return 0;
 }

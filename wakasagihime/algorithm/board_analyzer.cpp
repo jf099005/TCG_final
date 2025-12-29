@@ -1,99 +1,58 @@
 #include"board_analyzer.h"
 
-// Square Adjacent[32][4];
-// int num_Adjacent[32];
+// Color is_endgame(Position pos){
+//     // bool red_win = true;
+//     // bool black_win = true;
+//     Board red_pieces = pos.pieces(Red);
+//     Board black_pieces = pos.pieces(Black);
 
-// void init_Adjacent_table(){
-//     for(Square from = SQ_A1; from <= SQ_H4; from = from+1){
-//         int num_destination = 0;
-//         // debug << "{ ";
-//         for(Direction dir: AllMoveDirections){
-//             Square to = from + dir;
-//             if(!is_okay(to))
-//                 continue;
+//     int num_black = pos.count(Black, ALL_PIECES);
+//     int num_red = pos.count(Red, ALL_PIECES);
 
-//             if(distance(Square(from), Square(to)) == 1){
-//                 Adjacent[from][num_destination++] = to;
-//                 // debug << to <<", ";
-//             }
+//     // debug << "num black: " << num_black <<"\n";
+//     // debug << "num red: " << num_red << "\n";
+
+//     bool red_win;
+//     for(Square sq_r : BoardView(red_pieces)){
+//         PieceType type_r = pos.peek_piece_at(sq_r).type;
+//         // debug << "red piece " << type_r << '\n';
+//         if(type_r == Cannon or type_r == Soldier){
+//             // debug << "\tcontinue\n";
+//             continue;
 //         }
-
-//         num_Adjacent[from] = num_destination;
-
-//         int num_diagonal = 0;
-
-//         for(Direction dir: AllDiagonalDirections){
-//             Square to = from + dir;
-//             if(!is_okay(to))
-//                 continue;
-
-//             if(distance(Square(from), Square(to)) == 2){
-//                 Diagonal[from][num_diagonal++] = to;
-//                 // debug << to << ", ";
-//             }
+//         red_win = true;
+//         for(Square sq_b: BoardView(black_pieces)){
+//             PieceType type_b = pos.peek_piece_at(sq_b).type;
+//             red_win &= (type_r > type_b and (type_r != Cannon and num_red >= 3));
+//             // if(!red_win)debug << "red " << type_r << "cannot capture black " << type_b << "\n";
+//             red_win &= !(type_b > type_r and\
+//                     (type_b != Cannon or num_black >= 3));
 //         }
-
-//        num_Diagonal[from] = num_diagonal;
-
-//        debug << num_Diagonal[from] <<", ";
+//         if(red_win)
+//             return Red;
 //     }
-// }
 
+//     bool black_win;
+//     for(Square sq_b: BoardView(black_pieces)){
+//         PieceType type_b = pos.peek_piece_at(sq_b).type;
+//         if(type_b == Cannon or type_b == Soldier)
+//             continue;
 
-
-Color is_endgame(Position pos){
-    // bool red_win = true;
-    // bool black_win = true;
-    Board red_pieces = pos.pieces(Red);
-    Board black_pieces = pos.pieces(Black);
-
-    int num_black = pos.count(Black, ALL_PIECES);
-    int num_red = pos.count(Red, ALL_PIECES);
-
-    // debug << "num black: " << num_black <<"\n";
-    // debug << "num red: " << num_red << "\n";
-
-    bool red_win;
-    for(Square sq_r : BoardView(red_pieces)){
-        PieceType type_r = pos.peek_piece_at(sq_r).type;
-        // debug << "red piece " << type_r << '\n';
-        if(type_r == Cannon or type_r == Soldier){
-            // debug << "\tcontinue\n";
-            continue;
-        }
-        red_win = true;
-        for(Square sq_b: BoardView(black_pieces)){
-            PieceType type_b = pos.peek_piece_at(sq_b).type;
-            red_win &= (type_r > type_b and (type_r != Cannon and num_red >= 3));
-            // if(!red_win)debug << "red " << type_r << "cannot capture black " << type_b << "\n";
-            red_win &= !(type_b > type_r and\
-                    (type_b != Cannon or num_black >= 3));
-        }
-        if(red_win)
-            return Red;
-    }
-
-    bool black_win;
-    for(Square sq_b: BoardView(black_pieces)){
-        PieceType type_b = pos.peek_piece_at(sq_b).type;
-        if(type_b == Cannon or type_b == Soldier)
-            continue;
-
-        black_win = true;
-        for(Square sq_r : BoardView(red_pieces)){
-            PieceType type_r = pos.peek_piece_at(sq_r).type;
+//         black_win = true;
+//         for(Square sq_r : BoardView(red_pieces)){
+//             PieceType type_r = pos.peek_piece_at(sq_r).type;
             
-            black_win &= !(type_r > type_b and\
-                    (type_r != Cannon or num_red >= 3));
+//             black_win &= !(type_r > type_b and\
+//                     (type_r != Cannon or num_red >= 3));
 
-            black_win &= (type_b > type_r and\
-                    (type_b != Cannon or num_black >= 3));
-        }
-        if(black_win)
-            return Black;
-    }
-    return NO_COLOR;
-}
+//             black_win &= (type_b > type_r and\
+//                     (type_b != Cannon or num_black >= 3));
+//         }
+//         if(black_win)
+//             return Black;
+//     }
+//     return NO_COLOR;
+// }
 
 int pieces_score(const Position &pos, Board pieces_location){
     int score = 0;
@@ -102,14 +61,4 @@ int pieces_score(const Position &pos, Board pieces_location){
         score += Piece_Value[ pos.peek_piece_at(sq).type ];
     }
     return score;
-}
-
-int exp_pieces_score(const Position &pos, Board pieces_location){
-    int score = 0;
-    // Board pieces_location = pos.pieces(side);
-    for(Square sq: BoardView(pieces_location)){
-        score += (1ll << (Piece_Value[ pos.peek_piece_at(sq).type ]));
-    }
-    return score;
-
 }

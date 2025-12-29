@@ -13,7 +13,7 @@
 #define TIMING 1
 #define ORDERING 1
 #define QUIESCENT_SEARCH 1
-#define NEGASCOUT 1
+// #define NEGASCOUT 1
 
 class MoveOrderer{
     public:
@@ -87,6 +87,7 @@ class ACDC{
 
             history = new Move[MAX_DEPTH];
 
+            remain_hidden_pieces_number = 32;
             for(int piecetype = General; piecetype<=Soldier; piecetype++){
                 int pieceNumber = piecetype==General?1:
                                         piecetype == Soldier? 5:2;
@@ -140,6 +141,7 @@ class ACDC{
         Move opt_solution(Position pos, double given_time, int remain_moves);
 
         unsigned short remain_hidden_pieces[2][8];
+        unsigned short remain_hidden_pieces_number;
 
         int visited_states, visited_critical_states;
         int correct_prediction, fail_prediction;

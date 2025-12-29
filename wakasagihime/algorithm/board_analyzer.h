@@ -151,69 +151,14 @@ inline bool is_escape_move(const Position& pos, Move mv){
 }
 
 
-const int DANGER = -114514;
-inline int evaluate_square(const Position& pos, Square sq, Piece piece, int basic_mobility){
-    int mobility = basic_mobility;
-    int attack_val = 0;
-    bool threaten = false;
+const int DANGER = -191981;
 
-    Color opponent = Opponent[piece.side];
-    for(int adj_dir = 0; adj_dir < num_Adjacent[sq] and !threaten; adj_dir++){
-        Square sq_nx = Adjacent[sq][adj_dir];
-        
-        assert(is_okay(sq_nx));
-
-        Piece nx_piece = pos.peek_piece_at(sq_nx);
-
-        if(nx_piece.side != opponent && nx_piece.side != NO_COLOR )
-            continue;
-
-        bool can_move = (
-                            nx_piece.type == NO_PIECE ||
-                            (
-                                piece.type > nx_piece.type && 
-                                nx_piece.type != piece.type
-                            )
-                        );
-
-        mobility += can_move;
-        threaten |= nx_piece.type != Cannon && nx_piece.type != NO_PIECE && nx_piece.type > piece.type;
-        bool can_attack = piece.type > nx_piece.type && nx_piece.type != NO_PIECE && !threaten;
-        
-        attack_val += can_attack?Piece_Value[nx_piece.type]:0;
-    }
-
-    int control_val = 0;
-    for(int diag_dir = 0; diag_dir < num_Diagonal[sq] and !threaten; diag_dir++){
-        Square sq_diag = Diagonal[sq][diag_dir];
-
-        assert(is_okay(sq_diag));
-        
-        Piece diag_piece = pos.peek_piece_at(sq_diag);
-
-        if(diag_piece.side != opponent && diag_piece.side != NO_COLOR)
-            continue;
-
-        // bool can_move = (
-        //                     diag_piece.type == NO_PIECE ||
-        //                     (
-        //                         piece.type > diag_piece.type
-        //                     )
-        //                 );
-
-        // mobility += can_move;
-        // threaten |= diag_piece.type > piece.type && nx_piece.type != Cannon;
-        bool can_control = piece.type > diag_piece.type && diag_piece.type != NO_PIECE && !threaten;
-        
-        control_val += can_control?Piece_Value[diag_piece.type]:0;
-    }
-    return (threaten? DANGER : mobility*2 + attack_val + control_val*2);
-}
+const int max_square_evaluare_score = 10;
 
 inline constexpr short AllMoveDirections_size = 4;
 
 
-Color is_endgame(Position pos);
+// Color is_endgame(Position pos);
 
 int pieces_score(const Position &pos, Board pieces_location);
 // int exp_pieces_score(const Position &pos, Board pieces_location);

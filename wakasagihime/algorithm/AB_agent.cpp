@@ -190,7 +190,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
         #endif
 
         if(!is_unstable(pos) or depth <= lim_extend_depth){
-            int score =  CDCEvaluate::calculate_score(pos, remain_moves);
+            int score =  CDCEvaluate::calculate_score(pos, remain_moves, this->remain_hidden_pieces);
             // TT->write(tt_lookup, depth, score, opt_move, true);
             return score;
         }
@@ -209,7 +209,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
 
     if(critical_search){
         if(prv == PAUSE){
-            opt = CDCEvaluate::calculate_score(pos, remain_moves);
+            opt = CDCEvaluate::calculate_score(pos, remain_moves, this->remain_hidden_pieces);
         }
         else{
             Position pos_copy(pos);
@@ -222,7 +222,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
 
     if(num_valid_moves == 0){
         if(prv == PAUSE){
-            return CDCEvaluate::calculate_score(pos, remain_moves-1);
+            return CDCEvaluate::calculate_score(pos, remain_moves-1, this->remain_hidden_pieces);
         }
         pos.pass_turn();
         return -Negamax(pos, depth-1, remain_moves-1, -beta, -alpha, PAUSE);
@@ -234,9 +234,10 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
     if(tt_lookup->depth > 0){
         for(int i=0; i<num_valid_moves; i++){
             if(nx_moves[i] == tt_lookup->opt_move){
-                Move tmp = nx_moves[0];
-                nx_moves[0] = nx_moves[i];
-                nx_moves[i] = tmp;
+                // Move tmp = nx_moves[0];
+                // nx_moves[0] = nx_moves[i];
+                // nx_moves[i] = tmp;
+                swap_moves(nx_moves, nullptr, 0, i);
                 break;
             }
         }
@@ -376,6 +377,8 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
         for(int color = Black; color <= Red; color++)
             C += remain_hidden_pieces[color][piecetype];
 
+    //only for debugging, should be removed after this assertion does not happen again
+    assert(C==remain_hidden_pieces_number);
 
     // debug << "start:" << General <<", end:" << Soldier <<std::endl;
 
@@ -406,6 +409,7 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
             Score eval;
 
             remain_hidden_pieces[color][piecetype]--;
+            remain_hidden_pieces_number--;
 
             if(depth >= 1)
                 eval = -Negamax(pos_copy, depth-1, 30, -CDCEvaluate::score_mx, CDCEvaluate::score_mx, move);
@@ -419,6 +423,7 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
             // debug <<"\n\n";
 
             remain_hidden_pieces[color][piecetype]++;
+            remain_hidden_pieces_number++;
 
             total_mass += branch_mass;
             total_score += branch_mass * eval;
@@ -457,16 +462,35 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
 
 Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_moves){
     MoveList<> nx_moves(pos);
-    #ifdef TT_H
-    TT_info* tt_lookup = TT->query(pos, depth);
-    #endif
 
     orderer->ordering_move(pos, nx_moves, false, depth <= 2);
+    
+    #ifdef TT_H
+    #ifdef ORDERING
+    TT_info* tt_lookup = TT->query(pos, depth);
+    if(tt_lookup->depth > 0){
+        debug << "TT opt found:" << tt_lookup->opt_move;
+        for(int i=0; i < nx_moves.size(); i++){
+            if(nx_moves[i] == tt_lookup->opt_move){
+                // Move tmp = nx_moves[0];
+                // nx_moves[0] = nx_moves[i];
+                // nx_moves[i] = tmp;
+                swap_moves(nx_moves, nullptr, 0, i);
+                break;
+            }
+        }
+    }
+    else{
+        debug << "TT notfound\n";
+    }
+    #endif
+    #endif
+
     Move opt_move = nx_moves[0];
     debug << "branch " << opt_move;
     Score opt_score = Move_Evaluate(pos, opt_move, depth-1, remain_moves-1, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
     debug << "score:" << opt_score << '\n';
-    // debug << "first move score:" << opt_score << '\n';
+
     for(int i=1; i<nx_moves.size(); i++){
         if(nx_moves[i].type() == Flipping and depth <= 2 and nx_moves[0].type() != Flipping)
             continue;
@@ -478,20 +502,16 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
         if(move_score > opt_score){
             opt_move = nx_moves[i];
             opt_score = move_score;
+            if(move_score >= CDCEvaluate::score_mx){
+                break;
+            }
         }
-
-        // Position copy(pos);
-        // copy.do_move(nx_moves[i]);
-        // debug <<"pv of the move:===\n";
-        // trace_PV(copy, depth-1);
-        // debug << '\n' << '\n';
-        // debug << "\t visited nodes:" << visited_states << std::endl;
     }
 
     debug << "\topt score: " << opt_score << '\n';
 
     #ifdef TT_H
-    TT->write(pos, depth, opt_score, opt_move);
+    TT->write(tt_lookup, depth, opt_score, opt_move, true);
     #endif
 
     return opt_move;
@@ -568,7 +588,7 @@ void ACDC::trace_PV(Position pos, int depth){
         debug << pos;
         debug << pos.toFEN() << std::endl;
         debug << "\t TT score:" << tt_lookup->score << '\n';
-        debug <<  "\t score:" << CDCEvaluate::calculate_score(pos) <<std::endl;
+        debug <<  "\t score:" << CDCEvaluate::calculate_score(pos, 30, this->remain_hidden_pieces) <<std::endl;
         debug << "\t opt move: " << tt_lookup->opt_move;
         pos.do_move( tt_lookup->opt_move );
         depth--;
@@ -580,7 +600,7 @@ void ACDC::trace_PV(Position pos, int depth){
     debug << "ended\n";
     debug << pos;
     debug << pos.toFEN() << std::endl;
-    debug << '\t' << "score:" << CDCEvaluate::calculate_score(pos) << std::endl;
+    debug << '\t' << "score:" << CDCEvaluate::calculate_score(pos, 30, this->remain_hidden_pieces) << std::endl;
     debug << "================================\n";
 }
 

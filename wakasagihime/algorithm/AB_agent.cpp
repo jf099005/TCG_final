@@ -1,10 +1,6 @@
 #include"AB_agent.h"
 #include<iomanip>
 #include<cstdlib>
-#define TIMING 1
-#define ORDERING 1
-#define QUIESCENT_SEARCH 1
-// #define NEGASCOUT 1
 // #define OUTPUT_RECURSION_TREE 1
 
 inline void swap_moves(MoveList<>& moves, int* moves_score, int i, int j){
@@ -127,7 +123,7 @@ int MoveOrderer::evaluate_move(const Position& pos, Move move){
 const static int non_capture_penalty = 10;
 
 //in fact, NegaScout
-double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, double beta, Move prv, Square sq_danger){
+Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Score beta, Move prv){
     #ifdef TIMING
     if(std::chrono::steady_clock::now() > deadline){
         return -CDCEvaluate::score_mx;
@@ -150,14 +146,14 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     if(pos.winner() != NO_COLOR){
         return (pos.winner() == Mystery)? 0:\
         (pos.winner() == pos.due_up()) ?\
-            CDCEvaluate::score_mx : -CDCEvaluate::score_mx;
+            CDCEvaluate::score_mx + remain_moves*10: -CDCEvaluate::score_mx;
     }
 
     if(remain_moves == 0){
         return 0;
     }
 
-    double opt = alpha;//-CDCEvaluate::score_mx;
+    Score opt = -CDCEvaluate::score_mx;
 
     Move opt_move;
 
@@ -219,11 +215,14 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
             Position pos_copy(pos);
             pos_copy.pass_turn();
             opt = -Negamax(pos_copy, depth-1, remain_moves-1, -beta, -alpha, PAUSE);
+            if(opt >= beta)
+                return opt;
         }
     }
+
     if(num_valid_moves == 0){
         if(prv == PAUSE){
-            return CDCEvaluate::calculate_score(pos, remain_moves);
+            return CDCEvaluate::calculate_score(pos, remain_moves-1);
         }
         pos.pass_turn();
         return -Negamax(pos, depth-1, remain_moves-1, -beta, -alpha, PAUSE);
@@ -238,6 +237,7 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
                 Move tmp = nx_moves[0];
                 nx_moves[0] = nx_moves[i];
                 nx_moves[i] = tmp;
+                break;
             }
         }
     }
@@ -251,30 +251,48 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     debug << "\tsearch branch:" << num_valid_moves <<'\n';
     #endif
 
+    #ifdef NEGASCOUT
+    opt = Move_Evaluate(pos, nx_moves[0], depth-1, remain_moves-1, -beta, -alpha);
+    const int iteration_start = 1;
+    if(opt >= beta){
+        #ifdef TT_H
+        if(depth > 0)
+            TT->write(tt_lookup, depth, opt, opt_move, false);
+        #endif
+        correct_prediction += (1 <= 2);
+        fail_prediction += !(1 <= 2);
+        return opt;
+    }
+    alpha = std::max(alpha, opt);
+    #else
+    const int iteration_start = 0;
+    #endif
 
-    for(int move_idx = 0; move_idx < num_valid_moves; move_idx++){
-        
-        int bound = std::max(opt, beta) + 0.1;
-        Move nx_move = nx_moves[move_idx];
-        
+    for(int move_idx = iteration_start; move_idx < num_valid_moves; move_idx++){
+        Move nx_move = nx_moves[move_idx];    
         #ifdef OUTPUT_RECURSION_TREE
         debug << "\t\tsearch the branche of " << nx_move <<'\n';
         #endif
 
         #ifdef NEGASCOUT
+        const static double EPS = 1e-6;
         //Scout search
-        double v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -bound, -std::max(alpha, opt));
-
+        // Score v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -bound-1, -alpha);
+        Score v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -opt-EPS, -opt);
+        // alpha = std::max(alpha, v);
         if(v > opt){
-            if(bound == beta || v >= beta){
+            if(v >= beta){
                 opt = v;
+                opt_move = nx_move;
             }
             else{
-                v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -v);
+                v = Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -alpha);
+                opt = v;
+                opt_move = nx_move;
             }
         }
         #else
-        double v= Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -opt);
+        Score v= Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -alpha);
         #endif
 
         if(v > opt){
@@ -293,6 +311,8 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
             return v;
         }
         num_visited++;
+
+        alpha = std::max(alpha, opt);
     }
 
     assert(num_visited > 0);
@@ -312,7 +332,7 @@ double ACDC::Negamax(Position pos, int depth, int remain_moves, double alpha, do
     return opt;
 }
 
-double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, double alpha, double beta){
+Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, Score alpha, Score beta){
     //the move is an ordinary moves of a stone
     if(move.type() != Flipping){
         if(pos.peek_piece_at(move.to()).type != NO_PIECE)
@@ -324,7 +344,7 @@ double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves,
         //     remain_hidden_pieces[opponent][ opponent_pt ]--;
         // }
         pos.do_move(move);
-        double v = -Negamax(pos, depth, remain_moves, alpha, beta, move);
+        Score v = -Negamax(pos, depth, remain_moves, alpha, beta, move);
         // if(opponent_pt != NO_PIECE){
         //     remain_hidden_pieces[opponent][ opponent_pt ]++;
         // }
@@ -359,17 +379,17 @@ double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves,
 
     // debug << "start:" << General <<", end:" << Soldier <<std::endl;
 
-    double CscoreMax = CDCEvaluate::score_mx;
-    double CscoreMin = -CDCEvaluate::score_mx;
+    Score CscoreMax = CDCEvaluate::score_mx;
+    Score CscoreMin = -CDCEvaluate::score_mx;
 
     int total_mass = 0;
-    double total_score = 0;
+    Score total_score = 0;
 
-    double A = C*(alpha - CDCEvaluate::score_mx) + CDCEvaluate::score_mx;
-    double B = C*(beta - (-CDCEvaluate::score_mx)) + (-CDCEvaluate::score_mx);
+    Score A = C*(alpha - CDCEvaluate::score_mx) + CDCEvaluate::score_mx;
+    Score B = C*(beta - (-CDCEvaluate::score_mx)) + (-CDCEvaluate::score_mx);
     
-    double Calpha = C*alpha;
-    double Cbeta = C*beta;
+    Score Calpha = C*alpha;
+    Score Cbeta = C*beta;
 
     for(int piecetype = General; piecetype <= Soldier; piecetype++){
         for(int color = Black; color <= Red; color++){
@@ -383,7 +403,7 @@ double ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves,
             Piece piece(static_cast<Color>(color), static_cast<PieceType>(piecetype));
             pos_copy.place_piece_at(piece, hidden_sq);
 
-            double eval;
+            Score eval;
 
             remain_hidden_pieces[color][piecetype]--;
 
@@ -444,14 +464,14 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
     orderer->ordering_move(pos, nx_moves, false, depth <= 2);
     Move opt_move = nx_moves[0];
     debug << "branch " << opt_move;
-    double opt_score = Move_Evaluate(pos, opt_move, depth-1, remain_moves-1, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
+    Score opt_score = Move_Evaluate(pos, opt_move, depth-1, remain_moves-1, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
     debug << "score:" << opt_score << '\n';
     // debug << "first move score:" << opt_score << '\n';
     for(int i=1; i<nx_moves.size(); i++){
         if(nx_moves[i].type() == Flipping and depth <= 2 and nx_moves[0].type() != Flipping)
             continue;
 
-        double move_score = Move_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, -CDCEvaluate::score_mx, -opt_score);
+        Score move_score = Move_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, -CDCEvaluate::score_mx, -opt_score);
 
         debug << "branch " << nx_moves[i];
         debug << "score:" << move_score << '\n';
@@ -530,7 +550,7 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
         opt = search_solution;
         depth += 2;
         max_visited_depth += 2;
-        // if(depth > 12)
+        // if(depth > 4)
         //     break;
     }
     return opt;

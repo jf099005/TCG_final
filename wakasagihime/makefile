@@ -57,3 +57,5 @@ Test:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/test.cpp -fsanitize=address,undefined
 trace:
 	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/trace.cpp -fsanitize=address,undefined
+remain:
+	g++ -o wakasagi -DCHINESE_ENABLED=$(CHINESE) -march=native ${W_SRC} $(ADD_SOURCES) ./test_scripts/remain_moves.cpp -fsanitize=address,undefined

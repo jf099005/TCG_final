@@ -10,6 +10,11 @@
 #include"evaluator.h"
 #include"TT.h"
 
+#define TIMING 1
+#define ORDERING 1
+#define QUIESCENT_SEARCH 1
+#define NEGASCOUT 1
+
 class MoveOrderer{
     public:
         MoveOrderer()
@@ -23,7 +28,7 @@ class MoveOrderer{
 };
 
 const int MAX_DEPTH = 100;
-const int TT_bits = 25;
+const int TT_bits = 28;
 
 
 
@@ -119,11 +124,11 @@ class ACDC{
             delete [] history;
         }
         
-        double Negamax(Position pos, int depth, int remain_moves,\
-                    double alpha, double beta, Move prv, Square sq_danger = SQ_NONE);
+        Score Negamax(Position pos, int depth, int remain_moves,\
+                    Score alpha, Score beta, Move prv);
 
-        double Move_Evaluate(Position pos, Move move, int depth, int remain_moves,\
-                    double alpha = -CDCEvaluate::score_mx, double beta = CDCEvaluate::score_mx);
+        Score Move_Evaluate(Position pos, Move move, int depth, int remain_moves,\
+                    Score alpha = -CDCEvaluate::score_mx, Score beta = CDCEvaluate::score_mx);
         
         Move opt_solution_with_fixed_depth(Position pos, int depth, int remain_moves);
 

@@ -203,6 +203,7 @@ int main()
 
         double time_constraint = 1.0;
 
+        remain_moves = 2;
         Move opt = acdc.opt_solution(pos, time_constraint, remain_moves);
 
         auto stop = std::chrono::high_resolution_clock::now();

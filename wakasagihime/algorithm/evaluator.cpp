@@ -36,14 +36,14 @@ Score CDCEvaluate::calculate_score(const Position& pos, int remain_moves, unsign
     pawn_score -= pawn_evaluate(pos, opponent, remain_hidden_pieces);
 
     //163*10 + 360 + 1005 ~=1630+1365 ~= 3000
-    int total_score = piece_weight*piece_score + dis_weight*dis_score + pawn_score;
-    if(total_score < -score_mx || total_score > score_mx){
-        debug << "total score out of bound\n";
-        debug << pos<<"\n";
-        debug << "\ttotal score:" << total_score <<"\n";
-        debug <<'\t' << piece_score  << "\t" << dis_score <<  '\t' <<  pawn_score <<"\n";
-    }
-    assert(-score_mx <= total_score && total_score <= score_mx);
+    double total_score = piece_weight*piece_score + dis_weight*dis_score + pawn_score;
+    // if(total_score < -score_mx || total_score > score_mx){
+    //     debug << "total score out of bound\n";
+    //     debug << pos<<"\n";
+    //     debug << "\ttotal score:" << total_score <<"\n";
+    //     debug <<'\t' << piece_score  << "\t" << dis_score <<  '\t' <<  pawn_score <<"\n";
+    // }
+    // assert(-score_mx <= total_score && total_score <= score_mx);
     return total_score;
 }
 
@@ -163,7 +163,7 @@ Score CDCEvaluate::pawn_evaluate(const Position& pos, Color side, unsigned short
         -1   // 4
     };
 
-    bool cannot_win = valid_pawns == 0 && pos.count(side, Cannon) == 0 && remain_hidden_pieces[side][Cannon] == 0;
+    // bool cannot_win = valid_pawns == 0 && pos.count(side, Cannon) == 0 && remain_hidden_pieces[side][Cannon] == 0;
 
 
     return penalty_table[valid_pawns] + free_pawns;

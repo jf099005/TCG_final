@@ -380,23 +380,12 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
     }
     #endif
 
-    // if(depth <= 0){
-    //     return -CDCEvaluate::calculate_score(pos, remain_moves);
-    // }
     Position pos_copy(pos);
     pos_copy.do_move(move);//so the player is changed
     
 
 
     int C = remain_hidden_pieces_number;
-    // for(int piecetype = General; piecetype <= Soldier; piecetype++)
-    //     for(int color = Black; color <= Red; color++)
-    //         C += remain_hidden_pieces[color][piecetype];
-
-    //only for debugging, should be removed after this assertion does not happen again
-    // assert(C==remain_hidden_pieces_number);
-
-    // debug << "start:" << General <<", end:" << Soldier <<std::endl;
 
     Score CscoreMax = CDCEvaluate::score_mx;
     Score CscoreMin = -CDCEvaluate::score_mx;
@@ -432,11 +421,6 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
             else
                 eval = -Negamax(pos_copy, depth, 30, -CDCEvaluate::score_mx, CDCEvaluate::score_mx, move);
 
-            // debug << "branch of type" << piece.type<<", color " << piece.side <<'\n';
-            // debug << "square position:" << hidden_sq << '\n';
-            // debug << "branch position:" << pos_copy;
-            // debug <<"depth:" << depth<<", score: " << eval << "\n";
-            // debug <<"\n\n";
 
             remain_hidden_pieces[color][piecetype]++;
             remain_hidden_pieces_number++;
@@ -463,13 +447,8 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
                 return CscoreMax/C;
             }
 
-            // debug << "\t\t piece " << piecetype <<", color " << color <<'\n';
-            // debug << "\t\t\t mass:" << branch_mass << '\n';
-            // debug << "\t\t\t accmulate:" << total_score <<std::endl;
-
         }
     }
-    // debug << "end iterate\n";
     #ifdef TT_H
     TT->write(tt_lookup, depth, total_score/C, move, true);    
     #endif
@@ -503,9 +482,7 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
     #endif
 
     Move opt_move = nx_moves[0];
-    debug << "branch " << opt_move;
     Score opt_score = Move_Evaluate(pos, opt_move, depth-1, remain_moves-1, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
-    debug << "score:" << opt_score << '\n';
 
     for(int i=1; i<nx_moves.size(); i++){
         if(nx_moves[i].type() == Flipping and depth <= 2 and nx_moves[0].type() != Flipping)
@@ -513,8 +490,6 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
 
         Score move_score = Move_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, -CDCEvaluate::score_mx, -opt_score);
 
-        debug << "branch " << nx_moves[i];
-        debug << "score:" << move_score << '\n';
         if(move_score > opt_score){
             opt_move = nx_moves[i];
             opt_score = move_score;
@@ -561,34 +536,18 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
         debug << "depth " << depth <<std::endl;
 
         Move search_solution = opt_solution_with_fixed_depth(pos, depth, remain_moves);
-        // auto end = std::chrono::high_resolution_clock::now();
-        // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        // double spent_time = double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den;
 
-        debug << "\tvisited: " << visited_states << '\n';
-        debug << "\tvisited critical: " << visited_critical_states << '\n';
-        debug << "\tcorrect prediction:" << correct_prediction<<'\n';
-        debug << "\tfail prediction:" << fail_prediction << "\n";
-        debug << "\tsuccess rate: " << std::fixed << std::setprecision(3) << double(correct_prediction) / \
-                            double(correct_prediction + fail_prediction) << '\n';
-
-        if(std::chrono::steady_clock::now() > deadline)
+        if(std::chrono::steady_clock::now() >= deadline)
             break;
-
-
-        // debug << "depth: " << depth <<", total spent time:" << spent_time << std::endl;
-        // if(spent_time*100 > given_time){
-        //     break;
-        // }
         debug << "search finished\n";
         debug << '\t' << search_solution;
-        // trace_PV(pos, depth);
         opt = search_solution;
         depth += 2;
-        max_visited_depth += 2;
+        // max_visited_depth += 2;
         if(depth > MAX_DEPTH)
             break;
     }
+    max_visited_depth = depth - 2;
     return opt;
 }
 

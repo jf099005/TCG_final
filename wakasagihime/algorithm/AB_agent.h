@@ -127,14 +127,14 @@ class ACDC{
                     total_hidden += remain_hidden_pieces[i][j];
                 }
             }
-            if(total_hidden != pos.count(Hidden)){
-                debug << "FAIL, calculated total hidden: " << total_hidden <<", pos.count(Hidden): " << pos.count(Hidden) << "\n";
-                for(int i=General; i<= Soldier; i++){
-                    debug << piece_name[i] <<":" << remain_hidden_pieces[0][i] <<" / " << remain_hidden_pieces[1][i] << '\n';
-                }
-            }
-            assert(total_hidden == pos.count(Hidden));
-            debug << "check success\n";
+            // if(total_hidden != pos.count(Hidden)){
+            //     debug << "FAIL, calculated total hidden: " << total_hidden <<", pos.count(Hidden): " << pos.count(Hidden) << "\n";
+            //     for(int i=General; i<= Soldier; i++){
+            //         debug << piece_name[i] <<":" << remain_hidden_pieces[0][i] <<" / " << remain_hidden_pieces[1][i] << '\n';
+            //     }
+            // }
+            // assert(total_hidden == pos.count(Hidden));
+            // debug << "check success\n";
         }
 
         inline void flipping_piece(Piece piece){

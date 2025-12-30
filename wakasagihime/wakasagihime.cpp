@@ -11,7 +11,7 @@
 #include<fstream>
 #include<filesystem>
 #include<iomanip>
-#define RECORD_GAMES 1
+// #define RECORD_GAMES 1
 // using namespace std::chrono;
 
 
@@ -120,7 +120,7 @@ inline Move get_move(Position pos_prv, Position pos_cur){
         debug << "Current Position:\n" << pos_cur << std::endl;
     }
 
-    assert(n_diff == 1);
+    // assert(n_diff == 1);
     return mv;
 }
 
@@ -144,12 +144,12 @@ int main()
     #ifdef RECORD_GAMES
     std::string basic_record_path = "/home/course/select/b11201024/Desktop/TCG2025/TCG_final/wakasagihime/record/" + algorithm_name + ".txt";
     std::string game_record_path = generate_timestamped_record_path(basic_record_path);
+    std::ofstream record_ofs;
+    record_ofs.open(game_record_path);
     #endif
 
     Position prv_pos;
-    std::ofstream record_ofs;
-    record_ofs.open(game_record_path);
-
+    
     bool is_first_board = true;
 
 
@@ -170,7 +170,7 @@ int main()
         }
         else if(is_first_board){
             debug << " ===========a new game=============\n";
-            record_ofs << "====================New Game=================\n\n\n";
+            // record_ofs << "====================New Game=================\n\n\n";
             current_step = 0;
             remain_moves = maximum_static_moves;
             is_first_board = false;
@@ -234,7 +234,7 @@ int main()
 
         time_max = move_times;
 
-        debug << "time_max for this move: " << time_max << '\n';
+        // debug << "time_max for this move: " << time_max << '\n';
 
         Move opt = acdc.opt_solution(pos, time_min, time_max, 6, remain_moves);
 

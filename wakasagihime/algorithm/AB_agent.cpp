@@ -14,7 +14,7 @@ inline void swap_moves(MoveList<>& moves, int* moves_score, int i, int j){
 const Move PAUSE = Move(SQ_A1, SQ_H4);
 
 int MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves, bool only_critical_move, bool skip_flipping){    
-    assert(moves.size() <= 200 && moves.size());
+    // assert(moves.size() <= 200 && moves.size());
     static int moves_score[200];
 
     int valid_moves_num = moves.size();
@@ -64,7 +64,7 @@ int MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves, bool only
 
 
 Move MoveOrderer::predict_optimal_move(const Position& pos, MoveList<> &moves, bool only_critical_move, bool skip_flipping){    
-    assert(moves.size() <= 200 && moves.size());
+    // assert(moves.size() <= 200 && moves.size());
     static int moves_score[200];
 
     int valid_moves_num = moves.size();
@@ -201,8 +201,8 @@ void MoveOrderer::record_solution(Piece piece, Move move, int depth){
         debug << "error in history: " << piece.type << '\n';
         debug << move;
     }
-    assert(piece.type < 7);
-    assert(move.from() < 32);
+    // assert(piece.type < 7);
+    // assert(move.from() < 32);
     history[piece.side][piece.type][move.from()][move.to()] += (depth > 0? depth*depth : 0);
     if(history[piece.side][piece.type][move.from()][move.to()] > max_history_score){
         decrease();
@@ -232,7 +232,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
     std::cin.get();    
     #endif
 
-    assert(depth >= lim_extend_depth);
+    // assert(depth >= lim_extend_depth);
 
     if(pos.winner() != NO_COLOR){
         return (pos.winner() == Mystery)? 0:\
@@ -341,9 +341,9 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
 
     int num_visited = 1;
 
-    #ifdef OUTPUT_RECURSION_TREE
-    debug << "\tsearch branch:" << num_valid_moves <<'\n';
-    #endif
+    // #ifdef OUTPUT_RECURSION_TREE
+    // debug << "\tsearch branch:" << num_valid_moves <<'\n';
+    // #endif
 
     #ifdef NEGASCOUT
     opt = Move_Evaluate(pos, nx_moves[0], depth-1, remain_moves-1, -beta, -alpha);
@@ -420,7 +420,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
         alpha = std::max(alpha, opt);
     }
 
-    assert(num_visited > 0);
+    // assert(num_visited > 0);
 
     #ifdef TT_H
     // if(depth > 0)   
@@ -733,10 +733,10 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
 
     finished_branch++;
 
-    #ifdef OUT_INFO
-    debug << "branch" << opt_move;
-    debug << "\t score:" << opt_score << '\n';
-    #endif
+    // #ifdef OUT_INFO
+    // debug << "branch" << opt_move;
+    // debug << "\t score:" << opt_score << '\n';
+    // #endif
     for(int i=1; i<nx_moves.size(); i++){
         if(nx_moves[i].type() == Flipping and depth <= 2 and nx_moves[0].type() != Flipping)
             continue;
@@ -748,10 +748,10 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
         #endif
 
         finished_branch++;
-        #ifdef OUT_INFO
-        debug << "branch " << nx_moves[i];
-        debug << "score:" << move_score << '\n';
-        #endif
+        // #ifdef OUT_INFO
+        // debug << "branch " << nx_moves[i];
+        // debug << "score:" << move_score << '\n';
+        // #endif
 
         #ifdef TIMING
         if(std::chrono::steady_clock::now() >= deadline)
@@ -768,9 +768,9 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
         }
     }
 
-    #ifdef OUT_INFO
-    debug << "\topt score: " << opt_score << '\n';
-    #endif
+    // #ifdef OUT_INFO
+    // debug << "\topt score: " << opt_score << '\n';
+    // #endif
 
     #ifdef TT_H
     TT->write(pos, depth, opt_score, opt_move, true);
@@ -806,13 +806,13 @@ Move ACDC::opt_solution(Position pos, double time_min, double time_max, int dept
 
     MoveList<> nx_moves(pos);
     orderer->ordering_move(pos, nx_moves, false, false);
-    debug << "ordered next move: " << nx_moves[0] << '\n';
+    // debug << "ordered next move: " << nx_moves[0] << '\n';
     int depth = 2;
     Move opt = nx_moves[0];
     orderer->reset_history();
     while(true){
         // reset();
-        debug << "depth " << depth <<std::endl;
+        // debug << "depth " << depth <<std::endl;
 
         Move search_solution = opt_solution_with_fixed_depth(pos, depth, remain_moves);
         
@@ -830,19 +830,19 @@ Move ACDC::opt_solution(Position pos, double time_min, double time_max, int dept
         if(depth >= depth_constraint && std::chrono::steady_clock::now() >= min_times)
             break;
 
-        debug << "search finished\n";
-        debug << '\t' << search_solution;
+        // debug << "search finished\n";
+        // debug << '\t' << search_solution;
         opt = search_solution;
         depth += 1;
         // max_visited_depth += 2;
         if(depth > MAX_DEPTH)
             break;
         orderer->decrease();
-        debug << "history decreasing finished\n";
+        // debug << "history decreasing finished\n";
 
-        debug << "TT query:" << TT->num_query << '\n';
-        debug <<"success query:" << TT->num_success_query << '\n';
-        debug << "rate: " << std::fixed << std::setprecision(2) << double(TT->num_success_query) / (TT->num_query) << '\n';
+        // debug << "TT query:" << TT->num_query << '\n';
+        // debug <<"success query:" << TT->num_success_query << '\n';
+        // debug << "rate: " << std::fixed << std::setprecision(2) << double(TT->num_success_query) / (TT->num_query) << '\n';
     }
     max_visited_depth = depth - 1;
     return opt;

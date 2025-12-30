@@ -113,12 +113,15 @@ inline Move get_move(Position pos_prv, Position pos_cur){
             mv = Move(sq, sq);
         }
     }
+
+    if(n_diff > 1){
+        debug << "Error in get_move function!\n";
+        debug << "Previous Position:\n" << pos_prv << std::endl;
+        debug << "Current Position:\n" << pos_cur << std::endl;
+    }
+
     assert(n_diff == 1);
     return mv;
-}
-
-double predict_times(double current_remain_times, const Position& pos){
-    return 0;
 }
 
 // le fishe
@@ -139,7 +142,7 @@ int main()
     #endif
     
     #ifdef RECORD_GAMES
-    std::string basic_record_path = "/home/jf099005/Desktop/114_1/TCG/final/wakasagihime/record/" + algorithm_name + ".txt";
+    std::string basic_record_path = "/home/course/select/b11201024/Desktop/TCG2025/TCG_final/wakasagihime/record/" + algorithm_name + ".txt";
     std::string game_record_path = generate_timestamped_record_path(basic_record_path);
     #endif
 
@@ -147,7 +150,7 @@ int main()
     std::ofstream record_ofs;
     record_ofs.open(game_record_path);
 
-    bool is_first_board = false;
+    bool is_first_board = true;
 
 
     int estimated_endgame_moves = 100;
@@ -165,12 +168,12 @@ int main()
             current_step = 0;
             remain_moves = maximum_static_moves;
         }
-        else if(!is_first_board){
+        else if(is_first_board){
             debug << " ===========a new game=============\n";
             record_ofs << "====================New Game=================\n\n\n";
             current_step = 0;
             remain_moves = maximum_static_moves;
-            is_first_board = true;
+            is_first_board = false;
             if(pos.count(FACE_UP) != 0){
                 for(Square sq: BoardView(pos.pieces(FACE_UP))){
                     acdc.flipping_piece( pos.peek_piece_at(sq) );
@@ -196,6 +199,8 @@ int main()
             }
         }
 
+        is_first_board = false;
+
         #ifdef RECORD_GAMES
         record_ofs << "@ step " << current_step <<'\n';
         record_ofs << pos;
@@ -213,14 +218,21 @@ int main()
             prv_pos = pos;
             remain_moves--;
             current_step++;
+            estimated_endgame_moves--;
             continue;
         }
 
         double time_min = 1.0, time_max = 1.0;
 
-        if(current_step >= 10 && current_step <= 50){
-            time_max = 10.0;
-        }
+        // if(current_step >= 10 && current_step <= 50){
+        //     time_max = 10.0;
+        // }
+
+        double remain_time = pos.time_left();
+        double move_times = remain_time / double(estimated_endgame_moves);
+        move_times = std::min(move_times, 10.0);
+
+        // time_max = move_times;
 
         Move opt = acdc.opt_solution(pos, time_min, time_max, 6, remain_moves);
 
@@ -246,8 +258,13 @@ int main()
 
         face_up_pieces = pos.count(FACE_UP);
         remain_moves --;
+        estimated_endgame_moves--;
         current_step++;
         prv_pos = pos;
         info << opt;
+        if(estimated_endgame_moves <= 15){
+            estimated_endgame_moves += 10;
+        }
+
     }
 }

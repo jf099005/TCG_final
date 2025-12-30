@@ -11,6 +11,7 @@
 #include<fstream>
 #include<filesystem>
 #include<iomanip>
+#define RECORD_GAMES 1
 // using namespace std::chrono;
 
 
@@ -45,6 +46,8 @@ __attribute__((constructor)) void prepare()
 #include <iomanip>
 #include <sstream>
 
+
+#ifdef RECORD_GAMES
 // acknowledge the help of Chatgpt
 std::string generate_timestamped_record_path(const std::string& base_path)
 {
@@ -87,7 +90,7 @@ std::string generate_timestamped_record_path(const std::string& base_path)
             return numbered.string();
     }
 }
-
+#endif
 
 const int maximum_static_moves = 30;
 
@@ -114,6 +117,10 @@ inline Move get_move(Position pos_prv, Position pos_cur){
     return mv;
 }
 
+double predict_times(double current_remain_times, const Position& pos){
+    return 0;
+}
+
 // le fishe
 int main()
 {
@@ -130,15 +137,20 @@ int main()
     #else
     std::string algorithm_name = "pure_negamax";
     #endif
-
-    std::string basic_record_path = "/mnt/20F408ADF408876E/TCG/TCG_final/wakasagihime/record/record_of_" + algorithm_name + ".txt";
+    
+    #ifdef RECORD_GAMES
+    std::string basic_record_path = "/home/jf099005/Desktop/114_1/TCG/final/wakasagihime/record/" + algorithm_name + ".txt";
     std::string game_record_path = generate_timestamped_record_path(basic_record_path);
+    #endif
+
     Position prv_pos;
     std::ofstream record_ofs;
     record_ofs.open(game_record_path);
 
     bool is_first_board = false;
 
+
+    int estimated_endgame_moves = 100;
 
     while (std::getline(std::cin, line)) {
 
@@ -184,15 +196,18 @@ int main()
             }
         }
 
+        #ifdef RECORD_GAMES
         record_ofs << "@ step " << current_step <<'\n';
         record_ofs << pos;
         record_ofs <<"\t" << pos.toFEN()<<"\n\n";
 
+        record_ofs << "\t remain static moves:" << remain_moves <<std::endl;
+
+        #endif
+
         debug << pos << std::endl;
         debug << "\t remain time:" << pos.time_left() <<std::endl;
         debug << "\t remain moves:" << remain_moves <<std::endl;
-
-        record_ofs << "\t remain static moves:" << remain_moves <<std::endl;
         
         if(pos.time_left() < 0){
             prv_pos = pos;
@@ -201,15 +216,20 @@ int main()
             continue;
         }
 
-        double time_constraint = 1.0;
+        double time_min = 1.0, time_max = 1.0;
 
-        Move opt = acdc.opt_solution(pos, time_constraint, remain_moves);
+        // if(current_step >= 10 && current_step <= 50){
+        //     time_max = 10.0;
+        // }
+
+        Move opt = acdc.opt_solution(pos, time_min, time_max, 6, remain_moves);
 
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
+        #ifdef RECORD_GAMES
         record_ofs << "depth: " << acdc.max_visited_depth << '\n';
-        
+        record_ofs << "finished branch:" << acdc.finished_branch << '\n';
         record_ofs << "optimal move:" << opt;
         record_ofs << "correct prediction:" << acdc.correct_prediction << '\n';
         record_ofs << "failed prediction:" << acdc.fail_prediction << "\n";
@@ -217,17 +237,17 @@ int main()
                             double(acdc.correct_prediction + acdc.fail_prediction) << '\n';
         
         record_ofs << "time:" << double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den << std::endl;
+        record_ofs << "visited positions:" << acdc.visited_states <<'\n';
+        record_ofs << "visited criticals:" << acdc.visited_critical_states << '\n';
+        #endif
+
         debug << "time:" << double(duration.count())*std::chrono::microseconds::period::num/std::chrono::microseconds::period::den << std::endl;
 
-
-        record_ofs << "visited positions:" << acdc.visited_states <<'\n';
-        record_ofs << "visited criticals:" << acdc.visited_critical_states << '\n'; 
 
         face_up_pieces = pos.count(FACE_UP);
         remain_moves --;
         current_step++;
         prv_pos = pos;
         info << opt;
-
     }
 }

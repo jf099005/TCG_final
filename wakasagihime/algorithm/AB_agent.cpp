@@ -723,12 +723,15 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
     #endif
     #endif
 
+    finished_branch = 0;
     Move opt_move = nx_moves[0];
     #ifdef STAR2
     Score opt_score = Star2_Evaluate(pos, opt_move, depth-1, remain_moves-1, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
     #else
     Score opt_score = Move_Evaluate(pos, opt_move, depth-1, remain_moves-1, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
     #endif
+
+    finished_branch++;
 
     #ifdef OUT_INFO
     debug << "branch" << opt_move;
@@ -744,6 +747,7 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
         Score move_score = Move_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, -CDCEvaluate::score_mx, -opt_score);
         #endif
 
+        finished_branch++;
         #ifdef OUT_INFO
         debug << "branch " << nx_moves[i];
         debug << "score:" << move_score << '\n';
@@ -775,23 +779,30 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
     return opt_move;
 }
 
-Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
+Move ACDC::opt_solution(Position pos, double time_min, double time_max, int depth_constraint, int remain_moves){
 
     reset();
     TT->reset();
     max_visited_depth = 2;
     // given_time = 1000;
 
-    double time_constraint = given_time;
+    // double time_constraint = time_max;
 
     auto start = std::chrono::steady_clock::now();
 
-    int64_t time_us =
+    int64_t time_mx_us =
             std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::duration<double>(time_constraint)
+                std::chrono::duration<double>(time_max)
             ).count();
 
-    this->deadline = start + std::chrono::microseconds(time_us);
+    this->deadline = start + std::chrono::microseconds(time_mx_us);
+
+    int64_t time_mn_us = 
+            std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::duration<double>(time_min)
+            ).count();
+
+    auto min_times = start + std::chrono::microseconds(time_mn_us);
 
     MoveList<> nx_moves(pos);
     orderer->ordering_move(pos, nx_moves, false, false);
@@ -804,15 +815,19 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
         debug << "depth " << depth <<std::endl;
 
         Move search_solution = opt_solution_with_fixed_depth(pos, depth, remain_moves);
+        
         #ifdef TIMING
         if(std::chrono::steady_clock::now() >= deadline)
             break;
         #endif
 
+        if(depth >= depth_constraint && std::chrono::steady_clock::now() >= min_times)
+            break;
+
         debug << "search finished\n";
         debug << '\t' << search_solution;
         opt = search_solution;
-        depth += 2;
+        depth += 1;
         // max_visited_depth += 2;
         if(depth > MAX_DEPTH)
             break;
@@ -823,7 +838,7 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
         debug <<"success query:" << TT->num_success_query << '\n';
         debug << "rate: " << std::fixed << std::setprecision(2) << double(TT->num_success_query) / (TT->num_query) << '\n';
     }
-    max_visited_depth = depth - 2;
+    max_visited_depth = depth - 1;
     return opt;
 }
 

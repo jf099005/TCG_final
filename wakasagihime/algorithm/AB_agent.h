@@ -165,7 +165,8 @@ class ACDC{
         std::chrono::steady_clock::time_point deadline;
         
         int max_visited_depth;
-        Move opt_solution(Position pos, double given_time, int remain_moves);
+        int finished_branch;
+        Move opt_solution(Position pos, double time_min, double time_max, int depth_constraint, int remain_moves);
 
         unsigned short remain_hidden_pieces[2][8];
         unsigned short remain_hidden_pieces_number;

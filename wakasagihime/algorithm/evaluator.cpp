@@ -145,11 +145,29 @@ Score CDCEvaluate::pawn_evaluate(const Position& pos, Color side, unsigned short
         free_pawns += is_safe && is_free;
     }
 
-    int valid_pawns = safe_pawns + (danger_pawns >> 2) + remain_hidden_pieces[side][Soldier];
+    int valid_pawns = safe_pawns + (danger_pawns / 4) + remain_hidden_pieces[side][Soldier];
     valid_pawns = std::max(valid_pawns, int(danger_pawns > 0));
     if(!opponent_General_exist){
         return valid_pawns;
     }
+
+    if(valid_pawns > 5){
+        debug << "pawns:" << valid_pawns << "\n";
+        debug << pos;
+        debug << safe_pawns << '/' << danger_pawns << '/' << remain_hidden_pieces[side][Soldier] << '\n';
+
+        debug << "remain hidden:\n";
+        for(int i=0; i<=1; i++){
+            debug << (i==0?"Black":"Red")<<":";
+            for(int j=General; j<= Soldier;j++){
+                debug <<  piece_name[j] <<":" << remain_hidden_pieces[i][j]<<", ";
+            }
+            debug << '\n';
+        }
+        debug << '\n';
+    }
+
+    assert(valid_pawns <= 5);
 
     if(valid_pawns == 5){
         return 0;

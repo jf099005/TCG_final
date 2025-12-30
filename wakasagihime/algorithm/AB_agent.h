@@ -7,6 +7,7 @@
 #include "lib/helper.h"
 #include<algorithm>
 #include<chrono>
+#include<cstring>
 #include"evaluator.h"
 #include"TT.h"
 
@@ -14,12 +15,15 @@
 #define ORDERING 1
 #define QUIESCENT_SEARCH 1
 #define STAR2 1
+// #define HISTORY_HEURISTIC 1
 // #define NEGASCOUT 1
 
 class MoveOrderer{
     public:
         MoveOrderer()
-        {};
+        {
+            memset(history, 0, sizeof(history));
+        };
         //return the number of valid moves, and the movelist is sorted
         int ordering_move(const Position& pos, MoveList<> & moves, bool only_critical_move, bool skip_flipping);
 
@@ -30,6 +34,27 @@ class MoveOrderer{
 
         bool is_critical_move(const Position& pos, Move mv);
 
+        const int max_history_score = 1e6;
+        long long history[2][PIECE_TYPE_NB][SQUARE_NB][SQUARE_NB];
+
+        inline void reset_history(){
+            memset(history, 0, sizeof(history));
+        }
+
+        void record_cut(Piece piece, Move move, int depth);
+        void record_solution(Piece piece, Move move, int depth);
+
+        void decrease(){
+            for(int side = Black; side <= Red; side++){
+                for(int type = General; type <= Soldier; type++){
+                    for(int from = SQ_A1; from <= SQ_H4; from++){
+                        for(int to = SQ_A1; to <= SQ_H4; to ++){
+                            history[side][type][from][to] = history[side][type][from][to] / 2;
+                        }
+                    }
+                }
+            }
+        }
     //private:
 };
 
@@ -47,8 +72,6 @@ inline bool cannon_capture(const Position& pos){
 
 inline bool is_unstable(const Position& pos){
     bool capture_occur = cannon_capture(pos);
-    // debug << "cannon capture:" << capture_occur;
-    // debug << "color:" << pos.due_up()<<" , opponent: " << opponent <<'\n';
     for(Square sq: BoardView(pos.pieces(FACE_UP))){
         if(
             (pos.peek_piece_at(sq).side == Red || pos.peek_piece_at(sq).side == Black) &&
@@ -73,7 +96,8 @@ class ACDC{
     public:
 
         const int lim_extend_depth = -6;
-        ACDC(){
+        const bool timing;
+        ACDC(bool timing = true): timing(timing){
             // solver_color = color;
             // depth_limit = depth;
 

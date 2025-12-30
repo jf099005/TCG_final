@@ -115,7 +115,6 @@ Move MoveOrderer::predict_optimal_move(const Position& pos, MoveList<> &moves, b
             pred_move_score = moves_score[i];
         }
     }
-
     return prediction;
 }
 
@@ -169,8 +168,14 @@ int MoveOrderer::evaluate_move(const Position& pos, Move move){
     positional_score_before = (positional_score_before==DANGER? - Piece_Value[piece.type]*4 : positional_score_before);
     positional_score_after = (positional_score_after == DANGER? - Piece_Value[piece.type]*4: positional_score_after);
 
-    return capture_score*4 + positional_score_after - positional_score_before;
+    //positional score ~=(4~5)*piece_value ~= 200, capture score ~= 20, 
 
+    int evaluation =  capture_score*4 + positional_score_after - positional_score_before;
+    evaluation = evaluation*1000;
+    if(move.type() == Moving){
+        evaluation += history[piece.side][piece.type][move.from()][move.to()];
+    }
+    return evaluation;
 }
 
 //use int, less precision but faster
@@ -187,6 +192,21 @@ int MoveOrderer::evaluate_flipping(const Position& pos, Color side, Square sq, u
         }
     }
     return total_score/remain_hidden_pieces_num;
+}
+
+void MoveOrderer::record_cut(Piece piece, Move move, int depth){
+    history[piece.side][piece.type][move.from()][move.to()] += (depth > 0? depth:0);
+    if(history[piece.side][piece.type][move.from()][move.to()] > max_history_score){
+        decrease();
+    }
+}
+
+
+void MoveOrderer::record_solution(Piece piece, Move move, int depth){
+    history[piece.side][piece.type][move.from()][move.to()] += (depth > 0? depth*depth : 0);
+    if(history[piece.side][piece.type][move.from()][move.to()] > max_history_score){
+        decrease();
+    }
 }
 
 
@@ -379,7 +399,12 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
         }
 
         if(v >= beta){
-
+            #ifdef HISTORY_HEURISTIC
+            if(nx_move.type() == Moving){
+                orderer->record_cut(pos.peek_piece_at(nx_move.from()),\
+                        nx_move, depth);
+            }
+            #endif
             #ifdef TT_H
             if(depth > 0)
                 TT->write(tt_lookup, depth, opt, opt_move, false);
@@ -407,6 +432,13 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
     correct_prediction += prediction;
     fail_prediction += !prediction;
 
+    #ifdef HISTORY_HEURISTIC
+    if(opt_move.type() == Moving)
+        orderer->record_solution(
+                    pos.peek_piece_at(opt_move.from()),\
+                    opt_move, depth
+                );
+    #endif
     return opt;
 }
 
@@ -599,7 +631,12 @@ Score ACDC::Star2_Evaluate(Position pos, Move move, int depth, int remain_moves,
             MoveList<> branch_moves(pos_branch);
 
             Move prediction_move = orderer->predict_optimal_move(pos_branch, branch_moves, false, true);
-            pos_branch.do_move(prediction_move);
+            if(prediction_move.type() == Moving)
+                pos_branch.do_move(prediction_move);
+            else
+                pos_branch.pass_turn();
+
+            // flipping_piece();
             Score eval;
 
             bool is_attack = pos_copy.peek_piece_at(prediction_move.to()).type != NO_PIECE;
@@ -726,7 +763,7 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
     debug << "ordered next move: " << nx_moves[0] << '\n';
     int depth = 2;
     Move opt = nx_moves[0];
-
+    orderer->reset_history();
     while(true){
         // reset();
         debug << "depth " << depth <<std::endl;
@@ -742,6 +779,8 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
         // max_visited_depth += 2;
         if(depth > MAX_DEPTH)
             break;
+        orderer->decrease();
+        debug << "history decreasing finished\n";
     }
     max_visited_depth = depth - 2;
     return opt;

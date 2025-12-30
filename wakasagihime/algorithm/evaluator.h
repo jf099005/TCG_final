@@ -54,6 +54,7 @@ inline int evaluate_square(const Position& pos, Square sq, Piece piece, int basi
         
         control_val += can_control?Piece_Value[diag_piece.type]:0;
     }
+    // <= 2*4 + 4*ATK_MAX + 4*ATK_VAL*2 = 250+8 = 258
     return (threaten? DANGER : mobility*2 + attack_val + control_val*2);
 }
 

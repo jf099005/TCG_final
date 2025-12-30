@@ -164,4 +164,16 @@ inline constexpr short AllMoveDirections_size = 4;
 int pieces_score(const Position &pos, Board pieces_location);
 // int exp_pieces_score(const Position &pos, Board pieces_location);
 
+
+
+constexpr std::array<double, 33> calculate_inverse() {
+    std::array<double, 33> a{};
+    a[0] = 0.0;
+    for (int i = 1; i <= 32; ++i)
+        a[i] = 1.0/i;
+    return a;
+}
+
+constexpr auto inverse = calculate_inverse();
+
 #endif

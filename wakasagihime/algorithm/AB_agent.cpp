@@ -385,7 +385,7 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
     
 
 
-    int C = remain_hidden_pieces_number;
+    const int C = remain_hidden_pieces_number;
 
     Score CscoreMax = CDCEvaluate::score_mx;
     Score CscoreMin = -CDCEvaluate::score_mx;
@@ -393,20 +393,31 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
     int total_mass = 0;
     Score total_score = 0;
 
-    Score A = C*(alpha - CDCEvaluate::score_mx) + CDCEvaluate::score_mx;
-    Score B = C*(beta - (-CDCEvaluate::score_mx)) + (-CDCEvaluate::score_mx);
+    double Pr_A = alpha - CDCEvaluate::score_mx;
+    double Pr_B = beta + (CDCEvaluate::score_mx);// equivalent to "-score_mn"
+    // double A;//C*(alpha - CDCEvaluate::score_mx) + CDCEvaluate::score_mx;
+    // double B = CDCEvaluate::score_mx;//C*(beta - (-CDCEvaluate::score_mx)) + (-CDCEvaluate::score_mx);
     
     Score Calpha = C*alpha;
     Score Cbeta = C*beta;
+
+    double inv_C = inverse[C];
 
     for(int piecetype = General; piecetype <= Soldier; piecetype++){
         for(int color = Black; color <= Red; color++){
             int branch_mass = remain_hidden_pieces[color][piecetype];
 
-            assert(branch_mass >= 0);
+            // assert(branch_mass >= 0);
 
             if(!branch_mass)
                 continue;
+
+            Pr_A = Pr_A + double(branch_mass)*inv_C*CDCEvaluate::score_mx;
+            // == " + score_mn"
+            Pr_B = Pr_B - double(branch_mass)*inv_C*CDCEvaluate::score_mx;
+            double A = C*inverse[branch_mass]*(Pr_A);
+            double B = C*inverse[branch_mass]*(Pr_B);
+            // Pr_A = A*branch_mass/C;
             
             Piece piece(static_cast<Color>(color), static_cast<PieceType>(piecetype));
             pos_copy.place_piece_at(piece, hidden_sq);
@@ -417,10 +428,17 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
             remain_hidden_pieces_number--;
 
             if(depth >= 1)
-                eval = -Negamax(pos_copy, depth-1, 30, -CDCEvaluate::score_mx, CDCEvaluate::score_mx, move);
+                eval = -Negamax(pos_copy, depth-1, 30,\
+                                std::min(-CDCEvaluate::score_mx, A),\
+                                std::min(B, CDCEvaluate::score_mx),\
+                                move
+                        );
             else
-                eval = -Negamax(pos_copy, depth, 30, -CDCEvaluate::score_mx, CDCEvaluate::score_mx, move);
-
+                eval = -Negamax(pos_copy, depth, 30,\
+                                std::max(A, -CDCEvaluate::score_mx),\
+                                std::min(B, CDCEvaluate::score_mx),\
+                                move
+                        );
 
             remain_hidden_pieces[color][piecetype]++;
             remain_hidden_pieces_number++;
@@ -431,28 +449,32 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
             CscoreMax = total_score + (C-total_mass)*CDCEvaluate::score_mx;
             CscoreMin = total_score - (C-total_mass)*CDCEvaluate::score_mx;
 
-            if(CscoreMin >= Cbeta){
+            if(CscoreMin >= Cbeta || eval >= B){
                 // return beta;
                 #ifdef TT_H
                 TT->write(tt_lookup, depth, CscoreMin/C, move, false);
                 #endif
-                return CscoreMin/C;
+                return CscoreMin*inv_C;
             }
 
-            if(CscoreMax <= Calpha){
+            if(CscoreMax <= Calpha || eval <= A){
                 // return alpha;
                 #ifdef TT_H
                 TT->write(tt_lookup, depth, CscoreMax/C, move, false);
                 #endif
-                return CscoreMax/C;
+                return CscoreMax*inv_C;
             }
 
+            Pr_A -= branch_mass*inv_C*eval;
+            Pr_B -= branch_mass*inv_C*eval;
+
+            // prv_branch_mass = branch_mass;
         }
     }
     #ifdef TT_H
-    TT->write(tt_lookup, depth, total_score/C, move, true);    
+    TT->write(tt_lookup, depth, total_score*inv_C, move, true);    
     #endif
-    return total_score / total_mass;
+    return total_score*inv_C;
 }
 
 Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_moves){

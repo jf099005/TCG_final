@@ -13,6 +13,7 @@
 #define TIMING 1
 #define ORDERING 1
 #define QUIESCENT_SEARCH 1
+#define STAR2 1
 // #define NEGASCOUT 1
 
 class MoveOrderer{
@@ -21,6 +22,8 @@ class MoveOrderer{
         {};
         //return the number of valid moves, and the movelist is sorted
         int ordering_move(const Position& pos, MoveList<> & moves, bool only_critical_move, bool skip_flipping);
+
+        Move predict_optimal_move(const Position& pos, MoveList<> & moves, bool only_critical_move, bool skip_flipping);
         
         int evaluate_move(const Position& pos, Move move);
         int evaluate_flipping(const Position& pos, Color side, Square sq, unsigned short remain_hidden_pieces[2][8], int remain_hidden_pieces_num);
@@ -56,11 +59,6 @@ inline bool is_unstable(const Position& pos){
                 Square adj = Adjacent[sq][adj_idx];
                 capture_occur |= ( pos.peek_piece_at(adj).side == opponent) &&
                     (pos.peek_piece_at(sq).type > pos.peek_piece_at(adj).type);
-                // if(capture_occur){
-                //     debug << "captured at sq of " << sq << ", captured by " << adj <<'\n';
-                //     debug << '\t' << ( pos.peek_piece_at(adj).side) << " , " << ( opponent) <<'\n';
-                //     debug << '\t' << ( pos.peek_piece_at(adj).side == opponent) <<'\n';
-                // }
             }
         }
 
@@ -130,6 +128,10 @@ class ACDC{
                     Score alpha, Score beta, Move prv);
 
         Score Move_Evaluate(Position pos, Move move, int depth, int remain_moves,\
+                    Score alpha = -CDCEvaluate::score_mx, Score beta = CDCEvaluate::score_mx);
+        
+        //faster evaluation if there's no bug
+        Score Star2_Evaluate(Position pos, Move move, int depth, int remain_moves,\
                     Score alpha = -CDCEvaluate::score_mx, Score beta = CDCEvaluate::score_mx);
         
         Move opt_solution_with_fixed_depth(Position pos, int depth, int remain_moves);

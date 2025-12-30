@@ -65,6 +65,61 @@ int MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves, bool only
     return valid_moves_num;
 }
 
+
+Move MoveOrderer::predict_optimal_move(const Position& pos, MoveList<> &moves, bool only_critical_move, bool skip_flipping){    
+    assert(moves.size() <= 200 && moves.size());
+    static int moves_score[200];
+
+    int valid_moves_num = moves.size();
+
+    //filter the critical moves
+    if(only_critical_move){
+        int L=0, R=0;
+        while(R<moves.size()){
+            if(is_critical_move(pos, moves[R])){
+                if(L<R)swap_moves(moves, nullptr, L, R);
+                L++;
+            }
+            R++;
+        }
+        // if(!L)return PAUSE;
+        valid_moves_num = L;
+    }
+
+    else if(skip_flipping){
+        int L=0, R=0;
+        while(R<moves.size()){
+            if(moves[R].type() != Flipping){
+                if(L<R)swap_moves(moves, nullptr, L, R);
+                L++;
+            }
+            R++;
+        }
+        // if(!L)return PAUSE;
+        valid_moves_num = L;
+    }
+    // debug << "movelist before reordering:\n";
+    // for(int i=0; i<valid_moves_num;i++)
+    //     debug << moves[i];
+
+    for(int i=0; i<valid_moves_num; i++){
+        moves_score[i] = evaluate_move(pos, moves[i]);
+    }
+
+    Move prediction = moves[0];
+    int pred_move_score = moves_score[0];
+
+    for(int i=1; i<valid_moves_num; i++){
+        if(moves_score[i] > pred_move_score){
+            prediction = moves[i];
+            pred_move_score = moves_score[i];
+        }
+    }
+
+    return prediction;
+}
+
+
 bool MoveOrderer::is_critical_move(const Position& pos, Move mv){
     return (mv.type() == Moving) && (
         pos.peek_piece_at(mv.to()).type != NO_PIECE || is_escape_move(pos, mv)
@@ -309,7 +364,13 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
             }
         }
         #else
+
+        #ifdef STAR2
+        Score v= Star2_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -alpha);
+        #else
         Score v= Move_Evaluate(pos, nx_move, depth-1, remain_moves-1, -beta, -alpha);
+        #endif
+
         #endif
 
         if(v > opt){
@@ -355,17 +416,8 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
         if(pos.peek_piece_at(move.to()).type != NO_PIECE)
             remain_moves = 30;
 
-        // Color opponent = pos.peek_piece_at(move.to()).side;
-        // PieceType opponent_pt = pos.peek_piece_at(move.to()).type;
-        // if(opponent_pt != NO_PIECE){
-        //     remain_hidden_pieces[opponent][ opponent_pt ]--;
-        // }
         pos.do_move(move);
         Score v = -Negamax(pos, depth, remain_moves, alpha, beta, move);
-        // if(opponent_pt != NO_PIECE){
-        //     remain_hidden_pieces[opponent][ opponent_pt ]++;
-        // }
-
         return v;
     }
 
@@ -395,9 +447,6 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
 
     double Pr_A = alpha - CDCEvaluate::score_mx;
     double Pr_B = beta + (CDCEvaluate::score_mx);// equivalent to "-score_mn"
-    // double A;//C*(alpha - CDCEvaluate::score_mx) + CDCEvaluate::score_mx;
-    // double B = CDCEvaluate::score_mx;//C*(beta - (-CDCEvaluate::score_mx)) + (-CDCEvaluate::score_mx);
-    
     Score Calpha = C*alpha;
     Score Cbeta = C*beta;
 
@@ -412,9 +461,9 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
             if(!branch_mass)
                 continue;
 
-            Pr_A = Pr_A + double(branch_mass)*inv_C*CDCEvaluate::score_mx;
+            Pr_A = Pr_A + (branch_mass)*inv_C*CDCEvaluate::score_mx;
             // == " + score_mn"
-            Pr_B = Pr_B - double(branch_mass)*inv_C*CDCEvaluate::score_mx;
+            Pr_B = Pr_B - (branch_mass)*inv_C*CDCEvaluate::score_mx;
             double A = C*inverse[branch_mass]*(Pr_A);
             double B = C*inverse[branch_mass]*(Pr_B);
             // Pr_A = A*branch_mass/C;
@@ -429,7 +478,7 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
 
             if(depth >= 1)
                 eval = -Negamax(pos_copy, depth-1, 30,\
-                                std::min(-CDCEvaluate::score_mx, A),\
+                                std::max(-CDCEvaluate::score_mx, A),\
                                 std::min(B, CDCEvaluate::score_mx),\
                                 move
                         );
@@ -477,6 +526,125 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
     return total_score*inv_C;
 }
 
+
+Score ACDC::Star2_Evaluate(Position pos, Move move, int depth, int remain_moves, Score alpha, Score beta){
+    //the move is an ordinary moves of a stone
+    if(move.type() != Flipping){
+        if(pos.peek_piece_at(move.to()).type != NO_PIECE)
+            remain_moves = 30;
+        pos.do_move(move);
+        Score v = -Negamax(pos, depth, remain_moves, alpha, beta, move);
+        return v;
+    }
+
+    //otherwise, the move will be a flipping operation, perform star-algorithm
+    Square hidden_sq = move.from();
+
+    #ifdef TT_H
+    TT_info* tt_lookup = TT->query_for_flipping(pos, depth, hidden_sq);
+
+    if(tt_lookup->depth >= depth){
+        return tt_lookup->score;
+    }
+    #endif
+
+    Position pos_copy(pos);
+    pos_copy.do_move(move);//so the player is changed
+    
+
+
+    const int C = remain_hidden_pieces_number;
+
+    Score CscoreMax = CDCEvaluate::score_mx;
+    Score CscoreMin = -CDCEvaluate::score_mx;
+
+    int total_mass = 0;
+    Score total_score = 0;
+
+    double Pr_A = alpha - CDCEvaluate::score_mx;
+    double Pr_B = beta + (CDCEvaluate::score_mx);// equivalent to "-score_mn"
+    
+    Score Calpha = C*alpha;
+    Score Cbeta = C*beta;
+
+    double inv_C = inverse[C];
+
+    for(int piecetype = General; piecetype <= Soldier; piecetype++){
+        for(int color = Black; color <= Red; color++){
+            int branch_mass = remain_hidden_pieces[color][piecetype];
+
+            // assert(branch_mass >= 0);
+
+            if(!branch_mass)
+                continue;
+
+            Pr_A = Pr_A + (branch_mass)*inv_C*CDCEvaluate::score_mx;
+            // == " + score_mn"
+            Pr_B = Pr_B - (branch_mass)*inv_C*CDCEvaluate::score_mx;
+            double A = C*inverse[branch_mass]*(Pr_A);
+            double B = C*inverse[branch_mass]*(Pr_B);
+            // Pr_A = A*branch_mass/C;
+            
+            Piece piece(static_cast<Color>(color), static_cast<PieceType>(piecetype));
+
+            pos_copy.place_piece_at(piece, hidden_sq);
+            
+
+
+            remain_hidden_pieces[color][piecetype]--;
+            remain_hidden_pieces_number--;
+
+
+            Position pos_branch(pos_copy);
+            MoveList<> branch_moves(pos_branch);
+
+            Move prediction_move = orderer->predict_optimal_move(pos_branch, branch_moves, false, true);
+            pos_branch.do_move(prediction_move);
+            Score eval;
+
+            bool is_attack = pos_copy.peek_piece_at(prediction_move.to()).type != NO_PIECE;
+
+            if(depth >= 1)
+                eval = Negamax(pos_branch, depth-2, 30 - is_attack,\
+                                std::max(-CDCEvaluate::score_mx, A),\
+                                std::min(B, CDCEvaluate::score_mx),\
+                                move
+                        );
+            else
+                eval = Negamax(pos_branch, depth-1, 30 - is_attack,\
+                                std::max(A, -CDCEvaluate::score_mx),\
+                                std::min(B, CDCEvaluate::score_mx),\
+                                move
+                        );
+
+            remain_hidden_pieces[color][piecetype]++;
+            remain_hidden_pieces_number++;
+
+            total_mass += branch_mass;
+            total_score += branch_mass * eval;
+
+            CscoreMax = total_score + (C-total_mass)*CDCEvaluate::score_mx;
+            CscoreMin = total_score - (C-total_mass)*CDCEvaluate::score_mx;
+
+            
+            if(CscoreMax <= Calpha){
+                // return alpha;
+                #ifdef TT_H
+                TT->write(tt_lookup, depth, CscoreMax/C, move, false);
+                #endif
+                return CscoreMax*inv_C;
+            }
+
+
+            Pr_A -= branch_mass*inv_C*eval;
+            Pr_B -= branch_mass*inv_C*eval;
+
+            // prv_branch_mass = branch_mass;
+        }
+    }
+    return Move_Evaluate(pos, move, depth, remain_moves, alpha, beta);
+}
+
 Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_moves){
     MoveList<> nx_moves(pos);
 
@@ -504,14 +672,20 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
     #endif
 
     Move opt_move = nx_moves[0];
+    #ifdef STAR2
+    Score opt_score = Star2_Evaluate(pos, opt_move, depth-1, remain_moves-1, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
+    #else
     Score opt_score = Move_Evaluate(pos, opt_move, depth-1, remain_moves-1, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
-
+    #endif
     for(int i=1; i<nx_moves.size(); i++){
         if(nx_moves[i].type() == Flipping and depth <= 2 and nx_moves[0].type() != Flipping)
             continue;
 
+        #ifdef STAR2
+        Score move_score = Star2_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, -CDCEvaluate::score_mx, -opt_score);
+        #else
         Score move_score = Move_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, -CDCEvaluate::score_mx, -opt_score);
-
+        #endif
         if(move_score > opt_score){
             opt_move = nx_moves[i];
             opt_score = move_score;

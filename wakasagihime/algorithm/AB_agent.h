@@ -181,7 +181,7 @@ class ACDC{
 
         #ifdef TT_H
         CDCTranspositionTable *TT;
-        void trace_PV(Position pos, int depth);
+        // void trace_PV(Position pos, int depth);
         #endif
         MoveOrderer *orderer;
 

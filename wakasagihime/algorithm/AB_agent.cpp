@@ -250,7 +250,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
 
     #ifdef TT_H
     TT_info* tt_lookup = TT->query(pos, depth);
-    if( tt_lookup->depth >= depth){
+    if( tt_lookup != nullptr && tt_lookup->depth >= depth){
         #ifdef OUTPUT_RECURSION_TREE
         debug << "return from TT:" << tt_lookup->score <<", calculated score: " << CDCEvaluate::calculate_score(pos, remain_moves) << '\n';
         debug << "Press Enter to continue...";
@@ -324,7 +324,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
     #ifdef TT_H
     
     #ifdef ORDERING
-    if(tt_lookup->depth > 0){
+    if(tt_lookup != nullptr){
         for(int i=0; i<num_valid_moves; i++){
             if(nx_moves[i] == tt_lookup->opt_move){
                 // Move tmp = nx_moves[0];
@@ -409,7 +409,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
             #endif
             #ifdef TT_H
             if(depth > 0)
-                TT->write(tt_lookup, depth, opt, opt_move, false);
+                TT->write(pos, depth, opt, opt_move, false);
             #endif
             correct_prediction += (move_idx <= 2);
             fail_prediction += !(move_idx <= 2);
@@ -424,7 +424,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
 
     #ifdef TT_H
     // if(depth > 0)   
-        TT->write(tt_lookup, depth, opt, opt_move, true);
+        TT->write(pos, depth, opt, opt_move, true);
     #endif
 
     bool prediction = (nx_moves.size() and opt_move == nx_moves[0]);
@@ -470,7 +470,7 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
     #ifdef TT_H
     TT_info* tt_lookup = TT->query_for_flipping(pos, depth, hidden_sq);
 
-    if(tt_lookup->depth >= depth){
+    if(tt_lookup != nullptr && tt_lookup->depth >= depth){
         return tt_lookup->score;
     }
     #endif
@@ -544,7 +544,8 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
             if(CscoreMin >= Cbeta || eval >= B){
                 // return beta;
                 #ifdef TT_H
-                TT->write(tt_lookup, depth, CscoreMin/C, move, false);
+                TT->write_of_flipping(pos, depth, hidden_sq, CscoreMin/C, move, false);
+                // TT->write(tt_lookup, pos, depth, CscoreMin/C, move, false);
                 #endif
                 return CscoreMin*inv_C;
             }
@@ -552,7 +553,8 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
             if(CscoreMax <= Calpha || eval <= A){
                 // return alpha;
                 #ifdef TT_H
-                TT->write(tt_lookup, depth, CscoreMax/C, move, false);
+                // TT->write(tt_lookup, pos, depth, CscoreMax/C, move, false);
+                TT->write_of_flipping(pos, depth, hidden_sq, CscoreMax/C, move, false);
                 #endif
                 return CscoreMax*inv_C;
             }
@@ -564,7 +566,7 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
         }
     }
     #ifdef TT_H
-    TT->write(tt_lookup, depth, total_score*inv_C, move, true);    
+    TT->write_of_flipping(pos, depth, hidden_sq, total_score*inv_C, move, true);    
     #endif
     return total_score*inv_C;
 }
@@ -586,7 +588,7 @@ Score ACDC::Star2_Evaluate(Position pos, Move move, int depth, int remain_moves,
     #ifdef TT_H
     TT_info* tt_lookup = TT->query_for_flipping(pos, depth, hidden_sq);
 
-    if(tt_lookup->depth >= depth){
+    if(tt_lookup != nullptr && tt_lookup->depth >= depth){
         return tt_lookup->score;
     }
     #endif
@@ -598,17 +600,17 @@ Score ACDC::Star2_Evaluate(Position pos, Move move, int depth, int remain_moves,
 
     const int C = remain_hidden_pieces_number;
 
-    Score CscoreMax = CDCEvaluate::score_mx;
-    Score CscoreMin = -CDCEvaluate::score_mx;
+    double CscoreMax = CDCEvaluate::score_mx;
+    double CscoreMin = -CDCEvaluate::score_mx;
 
     int total_mass = 0;
-    Score total_score = 0;
+    double total_score = 0;
 
     double Pr_A = alpha - CDCEvaluate::score_mx;
     double Pr_B = beta + (CDCEvaluate::score_mx);// equivalent to "-score_mn"
     
-    Score Calpha = C*alpha;
-    Score Cbeta = C*beta;
+    double Calpha = C*alpha;
+    double Cbeta = C*beta;
 
     double inv_C = inverse[C];
 
@@ -679,7 +681,8 @@ Score ACDC::Star2_Evaluate(Position pos, Move move, int depth, int remain_moves,
             if(CscoreMax <= Calpha){
                 // return alpha;
                 #ifdef TT_H
-                TT->write(tt_lookup, depth, CscoreMax/C, move, false);
+                // TT->write(tt_lookup, pos, depth, CscoreMax/C, move, false);
+                TT->write_of_flipping(pos, depth, hidden_sq, CscoreMax/C, move, false);
                 #endif
                 return CscoreMax*inv_C;
             }
@@ -702,7 +705,7 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
     #ifdef TT_H
     #ifdef ORDERING
     TT_info* tt_lookup = TT->query(pos, depth);
-    if(tt_lookup->depth > 0){
+    if(tt_lookup != nullptr){
         // debug << "TT opt found:" << tt_lookup->opt_move;
         for(int i=0; i < nx_moves.size(); i++){
             if(nx_moves[i] == tt_lookup->opt_move){
@@ -766,7 +769,7 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
     #endif
 
     #ifdef TT_H
-    TT->write(tt_lookup, depth, opt_score, opt_move, true);
+    TT->write(pos, depth, opt_score, opt_move, true);
     #endif
 
     return opt_move;
@@ -775,6 +778,7 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
 Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
 
     reset();
+    TT->reset();
     max_visited_depth = 2;
     // given_time = 1000;
 
@@ -796,14 +800,14 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
     Move opt = nx_moves[0];
     orderer->reset_history();
     while(true){
-        #ifdef TIMING
-        if(std::chrono::steady_clock::now() >= deadline)
-            break;
-        #endif
         // reset();
         debug << "depth " << depth <<std::endl;
 
         Move search_solution = opt_solution_with_fixed_depth(pos, depth, remain_moves);
+        #ifdef TIMING
+        if(std::chrono::steady_clock::now() >= deadline)
+            break;
+        #endif
 
         debug << "search finished\n";
         debug << '\t' << search_solution;
@@ -814,6 +818,10 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
             break;
         orderer->decrease();
         debug << "history decreasing finished\n";
+
+        debug << "TT query:" << TT->num_query << '\n';
+        debug <<"success query:" << TT->num_success_query << '\n';
+        debug << "rate: " << std::fixed << std::setprecision(2) << double(TT->num_success_query) / (TT->num_query) << '\n';
     }
     max_visited_depth = depth - 2;
     return opt;
@@ -822,29 +830,29 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
 
 #ifdef TT_H
 
-void ACDC::trace_PV(Position pos, int depth){
-    debug << "==============PV================\n";
+// void ACDC::trace_PV(Position pos, int depth){
+//     debug << "==============PV================\n";
 
-    while(true){
-        TT_info* tt_lookup = TT->query(pos, depth);
-        debug << "depth:" << depth <<'\n';
-        debug << pos;
-        debug << pos.toFEN() << std::endl;
-        debug << "\t TT score:" << tt_lookup->score << '\n';
-        debug <<  "\t score:" << CDCEvaluate::calculate_score(pos, 30, this->remain_hidden_pieces, this->remain_hidden_pieces_number) <<std::endl;
-        debug << "\t opt move: " << tt_lookup->opt_move;
-        pos.do_move( tt_lookup->opt_move );
-        depth--;
-        if(tt_lookup->opt_move.type() == Flipping)
-            depth--;
-        if(tt_lookup->score == 114514 || depth <= -30)
-            break;
-    }
-    debug << "ended\n";
-    debug << pos;
-    debug << pos.toFEN() << std::endl;
-    debug << '\t' << "score:" << CDCEvaluate::calculate_score(pos, 30, this->remain_hidden_pieces, this->remain_hidden_pieces_number) << std::endl;
-    debug << "================================\n";
-}
+//     while(true){
+//         TT_info* tt_lookup = TT->query(pos, depth);
+//         debug << "depth:" << depth <<'\n';
+//         debug << pos;
+//         debug << pos.toFEN() << std::endl;
+//         debug << "\t TT score:" << tt_lookup->score << '\n';
+//         debug <<  "\t score:" << CDCEvaluate::calculate_score(pos, 30, this->remain_hidden_pieces, this->remain_hidden_pieces_number) <<std::endl;
+//         debug << "\t opt move: " << tt_lookup->opt_move;
+//         pos.do_move( tt_lookup->opt_move );
+//         depth--;
+//         if(tt_lookup->opt_move.type() == Flipping)
+//             depth--;
+//         if(tt_lookup == nullptr || depth <= -30)
+//             break;
+//     }
+//     debug << "ended\n";
+//     debug << pos;
+//     debug << pos.toFEN() << std::endl;
+//     debug << '\t' << "score:" << CDCEvaluate::calculate_score(pos, 30, this->remain_hidden_pieces, this->remain_hidden_pieces_number) << std::endl;
+//     debug << "================================\n";
+// }
 
 #endif

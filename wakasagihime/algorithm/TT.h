@@ -5,22 +5,24 @@
 
 const int piece_type_numbers = 7;
 
+const int8_t DEFAULT_DEPTH = -114;
 
 struct TT_info{
     Score score;
     int8_t depth;
     bool is_exact_value;
     Move opt_move;
-    Board pieces_location;
+    //location of all hidden pieces
+    Board hidden_pieces_location;
 
     TT_info(){
-        score = 1145140;
-        depth = -114;
+        score = 0;
+        depth = DEFAULT_DEPTH;
         is_exact_value = false;
-        pieces_location = 0;
+        hidden_pieces_location = 0;
     };
 
-    TT_info(double s, int d, Move nx, bool flag){
+    TT_info(const Position& pos, double s, int d, Move nx, bool flag){
         score = s;
         depth = d;
         opt_move = nx;
@@ -31,6 +33,11 @@ struct TT_info{
 
 class CDCTranspositionTable{
     public:
+        int num_query, num_success_query;
+        void reset(){
+            num_query = 0;
+            num_success_query = 0;
+        }
 
         CDCTranspositionTable(int hash_bits);
         ~CDCTranspositionTable();
@@ -38,8 +45,10 @@ class CDCTranspositionTable{
         TT_info* query(const Position& pos, int depth);
         TT_info* query_for_flipping(const Position& pos, int depth, Square flip_sq);
 
-        void write(const Position& pos, int depth, double score, Move opt_move);
-        void write(TT_info* info_ptr, int depth, double score, Move opt_move, bool is_exact);
+        void write(const Position& pos, int depth, double score, Move opt_move, bool is_exact_value);
+        
+        void write_of_flipping(const Position& pos, int depth, Square flip_sq, double score, Move opt_move, bool is_exact_value);
+        // void write(TT_info* info_ptr, const Position& pos, int depth, double score, Move opt_move, bool is_exact);
         // void write(TT_info* info_ptr, int depth, Square flip_sq, double score, Move opt_move, bool is_exact);
 
         //private:
@@ -51,15 +60,10 @@ class CDCTranspositionTable{
         long long flipping_sq_hash[SQUARE_NB];
         long long SideToMove_hash[SIDE_NB];
 
-
-
-
         TT_info *Record;
 
 
         long long random_value_max;
-
-        const double notfound = 114514;
 };
 
 #endif

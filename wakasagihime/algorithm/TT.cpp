@@ -27,42 +27,75 @@ CDCTranspositionTable::~CDCTranspositionTable(){
 
 TT_info* CDCTranspositionTable::query(const Position& pos, int depth){
     long long pos_hash = hash_pos(pos);
-    assert(pos_hash <= random_value_max && pos_hash >= 0);
-    return Record + pos_hash;
+    // assert(pos_hash <= random_value_max && pos_hash >= 0);
+
+    TT_info* lookup = Record + pos_hash;
     // if(pos_info.score == notfound or pos_info.depth < depth){
     //     return notfound;
     // }
+    num_query++;
+    if( lookup->depth == DEFAULT_DEPTH || lookup->hidden_pieces_location != pos.pieces(Hidden)){
+        return nullptr;
+        // (*lookup) = TT_info();
+    }
+    else
+        num_success_query++;
+    return lookup;
 }
 
 
 TT_info* CDCTranspositionTable::query_for_flipping(const Position& pos, int depth, Square flip_sq){
+    
     long long pos_hash = hash_pos(pos);
     pos_hash ^= flipping_sq_hash[flip_sq];
-    assert(pos_hash <= random_value_max && pos_hash >= 0);
-    return Record + pos_hash;
+    // assert(pos_hash <= random_value_max && pos_hash >= 0);
+    TT_info* lookup = Record + pos_hash;
     // if(pos_info.score == notfound or pos_info.depth < depth){
     //     return notfound;
     // }
+    num_query++;
+    if( lookup->depth == DEFAULT_DEPTH || lookup->hidden_pieces_location != pos.pieces(Hidden))
+        return nullptr;
+        // *lookup = TT_info();
+    else
+        num_success_query++;
+    return lookup;
 }
 
 
 
-void CDCTranspositionTable::write(const Position& pos, int depth, double score, Move opt_move){
+void CDCTranspositionTable::write(const Position& pos, int depth, double score, Move opt_move, bool is_exact_value){
     long long pos_hash = hash_pos(pos);
     assert(pos_hash <= random_value_max && pos_hash >= 0);
     Record[pos_hash].score = score;
     Record[pos_hash].depth = depth;
     Record[pos_hash].opt_move = opt_move; //= TT_info(score, depth, opt_move);
+    Record[pos_hash].hidden_pieces_location = pos.pieces(Hidden);
+    Record[pos_hash].is_exact_value = is_exact_value;
 }
 
 
-void CDCTranspositionTable::write(TT_info* info_ptr, int depth, double score, Move opt_move, bool is_exact){
-    assert(-100 <= depth && depth <= 100);
-    info_ptr->score = score;
-    info_ptr->depth = depth;
-    info_ptr->opt_move = opt_move; //= TT_info(score, depth, opt_move);
-    info_ptr->is_exact_value = is_exact;
+
+void CDCTranspositionTable::write_of_flipping(const Position& pos, int depth, Square flip_sq, double score, Move opt_move, bool is_exact_value){
+    long long pos_hash = hash_pos(pos);
+    pos_hash ^= flipping_sq_hash[flip_sq];
+    assert(pos_hash <= random_value_max && pos_hash >= 0);
+    Record[pos_hash].score = score;
+    Record[pos_hash].depth = depth;
+    Record[pos_hash].opt_move = opt_move; //= TT_info(score, depth, opt_move);
+    Record[pos_hash].hidden_pieces_location = pos.pieces(Hidden);
+    Record[pos_hash].is_exact_value = is_exact_value;
 }
+
+
+// void CDCTranspositionTable::write(TT_info* info_ptr, const Position& pos, int depth, double score, Move opt_move, bool is_exact){
+//     assert(-100 <= depth && depth <= 100);
+//     info_ptr->score = score;
+//     info_ptr->depth = depth;
+//     info_ptr->opt_move = opt_move; //= TT_info(score, depth, opt_move);
+//     info_ptr->is_exact_value = is_exact;
+//     info_ptr->hidden_pieces_location = pos.pieces(Hidden);
+// }
 
 
 long long CDCTranspositionTable::hash_pos(const Position& pos){

@@ -4,95 +4,187 @@ import multiprocessing
 import argparse
 import sys
 import re
+import os
+import fcntl
+import time
+import resource
+import traceback
 from pathlib import Path
 
 def play_one_game(args):
-    referee_path, agent1_path, agent2_path, show_detail, game_id = args
+    referee_path, agent1_path, agent2_path, show_detail, game_id, time_per_game = args
 
-    def readline(proc):
-        """Read line, safely."""
-        line = proc.stdout.readline()
-        if not line:
-            return None
-        return line.strip()
+    referee_path = Path(referee_path)
+    agent1_path = Path(agent1_path)
+    agent2_path = Path(agent2_path)
+
+    if not agent1_path.is_absolute():
+        agent1_path = Path.cwd() / agent1_path
+    if not agent2_path.is_absolute():
+        agent2_path = Path.cwd() / agent2_path
+    if not referee_path.is_absolute():
+        referee_path = Path.cwd() / referee_path
+
+    def make_nonblocking(f):
+        fd = f.fileno()
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    def readline(proc, timeout=5):
+        make_nonblocking(proc.stdout)
+
+        buf = []
+        end = time.time() + timeout
+
+        while time.time() < end:
+            try:
+                chunk = proc.stdout.read(1)
+            except:
+                chunk = None
+
+            if chunk:
+                if chunk == "\n":
+                    return "".join(buf), end - time.time()
+                buf.append(chunk)
+            else:
+                time.sleep(0.01)
+
+        return None, 0  # timeout
+
+    def set_limit():
+        LIMIT = 1024 * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_AS, (LIMIT, LIMIT))
 
     try:
         # Start referee and agents
-        ref = subprocess.Popen([referee_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
-        a1 = subprocess.Popen([agent1_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
-        a2 = subprocess.Popen([agent2_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        ref = subprocess.Popen(
+            [str(referee_path)],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            text=True
+        )
+        a1 = subprocess.Popen(
+            [str(agent1_path)],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            text=True, preexec_fn=set_limit, bufsize=0
+        )
+        a2 = subprocess.Popen(
+            [str(agent2_path)],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            text=True, preexec_fn=set_limit, bufsize=0
+        )
+
+        # timers
+        red_timer = time_per_game
+        black_timer = time_per_game
 
         ply = 1
 
-        #print(f">r 'START 0'")
-        ref.stdin.write("START 1\n") # dark chess
+        if game_id % 2 == 1:
+            red = a1
+            black = a2
+            red_str = "Agent 1"
+            black_str = "Agent 2"
+        else:
+            red = a2
+            black = a1
+            red_str = "Agent 2"
+            black_str = "Agent 1"
+
+        ref.stdin.write("START 1\n")
         ref.stdin.flush()
 
+        last_color = 'b' # init
+
         while True:
-            msg = readline(ref)
+            msg, _ = readline(ref, timeout=1)
             #print(f"<r '{msg}'")
             if msg is None or msg.startswith("ERR"):
                 break
-
-            red = a1 if (game_id % 2) else a2
-            black = a2 if (game_id % 2) else a1
-            red_str = "Agent 1" if (game_id % 2) else "Agent 2"
-            black_str = "Agent 2" if (game_id % 2) else "Agent 1"
 
             # get state
             #print(f">r 'STATE'")
             ref.stdin.write("STATE\n")
             ref.stdin.flush()
-            status = readline(ref)
+            status, _ = readline(ref, timeout=1)
             #print(f"<r '{status}'")
+
             if status == "IN-PLAY":
-                board = readline(ref)
-                ok = readline(ref)
+                board, _ = readline(ref, timeout=1)
+                ok, _ = readline(ref, timeout=1)
+                current_color = board.split()[1]
 
             elif status == "RED WINS":
-                board = readline(ref)
-                reason = readline(ref)
+                board, _ = readline(ref, timeout=1)
+                reason, _ = readline(ref, timeout=1)
                 if show_detail:
                     print(f"Game #{game_id}: \033[1;31m{red_str}\033[0m won by {reason}")
                 return red_str, 'r'
 
             elif status == "BLACK WINS":
-                board = readline(ref)
-                reason = readline(ref)
+                board, _ = readline(ref, timeout=1)
+                reason, _ = readline(ref, timeout=1)
                 if show_detail:
                     print(f"Game #{game_id}: \033[1;30m{black_str}\033[0m won by {reason}")
                 return black_str, 'b'
 
             elif status == "DRAW":
-                board = readline(ref)
-                reason = readline(ref)
+                board, _ = readline(ref, timeout=1)
+                reason, _ = readline(ref, timeout=1)
                 if show_detail:
                     print(f"Game #{game_id}: \033[1;32mdrawn\033[0m by {reason}")
                 return "draw", 'd'
 
             else:
+                print("???")
                 break
 
-            # even numbered games: a2 first
-            to_play = red if (ply % 2) else black
+            if current_color == last_color:
+                # reassign side
+                if game_id % 2 == 0:
+                    red = a1
+                    black = a2
+                    red_str = "Agent 1"
+                    black_str = "Agent 2"
+                else:
+                    red = a2
+                    black = a1
+                    red_str = "Agent 2"
+                    black_str = "Agent 1"
+
+                temp = black_timer
+                black_timer = red_timer
+                red_timer = temp
+
+            last_color = current_color
+
+            # the engine says so
+            to_play = red if current_color == 'r' else black
+            not_to_play = black if current_color == 'r' else red
 
             # check agent status
             if to_play.poll() is not None:
                 if show_detail:
-                    print(f"Game #{game_id}: {red_str if (ply % 2) else black_str} crashed")
-                return black_str, 'b' if (ply % 2) else red_str, 'r'
+                    print(f"Game #{game_id}: {red_str if current_color == 'r' else black_str} terminated unexpectedly.")
+                return (black_str, 'b') if current_color == 'r' else (red_str, 'r')
+
+            # send board to other agent
+            not_to_play.stdin.write(f"{board} -9999 -9999\n")
+            not_to_play.stdin.flush()
 
             # get moves from agent
-            #print(f">a '{board}'")
-            to_play.stdin.write(board + '\n')
+            #print(f">a '{board} {red_timer * 1000} {black_timer * 1000}'")
+            to_play.stdin.write(f"{board} {red_timer * 1000} {black_timer * 1000}\n")
             to_play.stdin.flush()
-            do_move = readline(to_play)
+            if current_color == 'r':
+                do_move, red_timer = readline(to_play, timeout=red_timer)
+            else:
+                do_move, black_timer = readline(to_play, timeout=black_timer)
             #print(f"<a '{do_move}'")
 
             if do_move is None:
                 if show_detail:
-                    print(f"Game #{game_id}: {red_str if (ply % 2) else black_str} did not respond.")
-                return black_str, 'b' if (ply % 2) else red_str, 'r'
+                    print(f"Game #{game_id}: {red_str if current_color == 'r' else black_str} did not respond in time.")
+                return (black_str, 'b') if current_color == 'r' else (red_str, 'r')
 
             # submit move
             #print(f">r '{do_move}'")
@@ -103,10 +195,11 @@ def play_one_game(args):
             ply += 1
 
         ref.kill(); a1.kill(); a2.kill()
-        return "error", ''
+        return "wtf unreachable", ''
 
     except Exception as e:
-        return f"error: {e}", ''
+        print(traceback.format_exc())
+        return f"except - {e}", ''
 
 def main():
     parser = argparse.ArgumentParser(description="Run multiple games between two agents using a referee.")
@@ -116,9 +209,10 @@ def main():
     parser.add_argument("-n", "--num-games", type=int, default=10)
     parser.add_argument("-j", "--jobs", type=int, default=multiprocessing.cpu_count())
     parser.add_argument("-s", "--show-detail", type=int, default=1, help="Show results of each match.")
+    parser.add_argument("-t", "--time", type=int, default=600, help="Time in second per game per side")
     args = parser.parse_args()
 
-    jobs = [(str(args.referee), str(args.agent1), str(args.agent2), args.show_detail, i) for i in range(args.num_games)]
+    jobs = [(str(args.referee), str(args.agent1), str(args.agent2), args.show_detail, i, args.time) for i in range(args.num_games)]
 
     with multiprocessing.Pool(args.jobs) as pool:
         results = pool.map(play_one_game, jobs)

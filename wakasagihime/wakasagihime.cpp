@@ -228,11 +228,13 @@ int main()
         //     time_max = 10.0;
         // }
 
-        double remain_time = pos.time_left();
+        double remain_time = pos.time_left() / 1000;
         double move_times = remain_time / double(estimated_endgame_moves);
         move_times = std::min(move_times, 10.0);
 
-        // time_max = move_times;
+        time_max = move_times;
+
+        debug << "time_max for this move: " << time_max << '\n';
 
         Move opt = acdc.opt_solution(pos, time_min, time_max, 6, remain_moves);
 

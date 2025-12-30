@@ -218,9 +218,9 @@ int main()
 
         double time_min = 1.0, time_max = 1.0;
 
-        // if(current_step >= 10 && current_step <= 50){
-        //     time_max = 10.0;
-        // }
+        if(current_step >= 10 && current_step <= 50){
+            time_max = 10.0;
+        }
 
         Move opt = acdc.opt_solution(pos, time_min, time_max, 6, remain_moves);
 

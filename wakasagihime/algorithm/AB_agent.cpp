@@ -519,8 +519,8 @@ Score ACDC::Move_Evaluate(Position pos, Move move, int depth, int remain_moves, 
             remain_hidden_pieces[color][piecetype]--;
             remain_hidden_pieces_number--;
 
-            if(depth >= 1)
-                eval = -Negamax(pos_copy, depth-1, 30,\
+            if(depth >= 2)
+                eval = -Negamax(pos_copy, depth-2, 30,\
                                 std::max(-CDCEvaluate::score_mx, A),\
                                 std::min(B, CDCEvaluate::score_mx),\
                                 move
@@ -655,8 +655,8 @@ Score ACDC::Star2_Evaluate(Position pos, Move move, int depth, int remain_moves,
             remain_hidden_pieces[color][piecetype]--;
             remain_hidden_pieces_number--;
 
-            if(depth >= 1)
-                eval = Negamax(pos_branch, depth-2, 30 - is_attack,\
+            if(depth >= 2)
+                eval = Negamax(pos_branch, depth-3, 30 - is_attack,\
                                 std::max(-CDCEvaluate::score_mx, A),\
                                 std::min(B, CDCEvaluate::score_mx),\
                                 move
@@ -816,6 +816,12 @@ Move ACDC::opt_solution(Position pos, double time_min, double time_max, int dept
 
         Move search_solution = opt_solution_with_fixed_depth(pos, depth, remain_moves);
         
+        #ifdef TT_H
+        #ifdef ORDERING
+        opt = search_solution;
+        #endif
+        #endif
+
         #ifdef TIMING
         if(std::chrono::steady_clock::now() >= deadline)
             break;

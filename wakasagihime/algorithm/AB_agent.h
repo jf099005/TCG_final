@@ -15,7 +15,7 @@
 #define ORDERING 1
 #define QUIESCENT_SEARCH 1
 #define STAR2 1
-// #define HISTORY_HEURISTIC 1
+#define HISTORY_HEURISTIC 1
 // #define NEGASCOUT 1
 
 class MoveOrderer{

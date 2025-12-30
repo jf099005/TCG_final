@@ -11,7 +11,7 @@ inline void swap_moves(MoveList<>& moves, int* moves_score, int i, int j){
     *(moves.begin() + j) = tmp;
 }
 
-const Move PAUSE = Move(1919);
+const Move PAUSE = Move(SQ_A1, SQ_H4);
 
 int MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves, bool only_critical_move, bool skip_flipping){    
     assert(moves.size() <= 200 && moves.size());
@@ -44,9 +44,6 @@ int MoveOrderer::ordering_move(const Position& pos, MoveList<> &moves, bool only
         if(!L)return 0;
         valid_moves_num = L;
     }
-    // debug << "movelist before reordering:\n";
-    // for(int i=0; i<valid_moves_num;i++)
-    //     debug << moves[i];
 
     #ifdef ORDERING
     for(int i=0; i<valid_moves_num; i++){
@@ -82,7 +79,7 @@ Move MoveOrderer::predict_optimal_move(const Position& pos, MoveList<> &moves, b
             }
             R++;
         }
-        // if(!L)return PAUSE;
+        if(!L)return PAUSE;
         valid_moves_num = L;
     }
 
@@ -95,12 +92,9 @@ Move MoveOrderer::predict_optimal_move(const Position& pos, MoveList<> &moves, b
             }
             R++;
         }
-        // if(!L)return PAUSE;
+        if(!L)return PAUSE;
         valid_moves_num = L;
     }
-    // debug << "movelist before reordering:\n";
-    // for(int i=0; i<valid_moves_num;i++)
-    //     debug << moves[i];
 
     for(int i=0; i<valid_moves_num; i++){
         moves_score[i] = evaluate_move(pos, moves[i]);
@@ -203,6 +197,12 @@ void MoveOrderer::record_cut(Piece piece, Move move, int depth){
 
 
 void MoveOrderer::record_solution(Piece piece, Move move, int depth){
+    if(piece.type > 7){
+        debug << "error in history: " << piece.type << '\n';
+        debug << move;
+    }
+    assert(piece.type < 7);
+    assert(move.from() < 32);
     history[piece.side][piece.type][move.from()][move.to()] += (depth > 0? depth*depth : 0);
     if(history[piece.side][piece.type][move.from()][move.to()] > max_history_score){
         decrease();
@@ -246,7 +246,7 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
 
     Score opt = -CDCEvaluate::score_mx;
 
-    Move opt_move;
+    Move opt_move = PAUSE;
 
     #ifdef TT_H
     TT_info* tt_lookup = TT->query(pos, depth);
@@ -301,11 +301,13 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
     if(critical_search){
         if(prv == PAUSE){
             opt = CDCEvaluate::calculate_score(pos, remain_moves, this->remain_hidden_pieces, this->remain_hidden_pieces_number);
+            opt_move = PAUSE;
         }
         else{
             Position pos_copy(pos);
             pos_copy.pass_turn();
             opt = -Negamax(pos_copy, depth-1, remain_moves-1, -beta, -alpha, PAUSE);
+            opt_move = PAUSE;
             if(opt >= beta)
                 return opt;
         }
@@ -433,11 +435,20 @@ Score ACDC::Negamax(Position pos, int depth, int remain_moves, Score alpha, Scor
     fail_prediction += !prediction;
 
     #ifdef HISTORY_HEURISTIC
-    if(opt_move.type() == Moving)
+    if(opt_move != PAUSE && opt_move.type() == Moving){
+        // if(pos.peek_piece_at(opt_move.from()).type == Hidden){
+        //     debug << "ERROR board:" << pos;
+        //     debug << "error move:" << opt_move;
+        //     debug << "depth:" <<depth << '\n';
+        //     debug << "num valid move:" << num_valid_moves << '\n';
+        //     debug << "first move of moves list:" << nx_moves[0] << '\n';
+        //     debug << "score:" << opt <<'\n';
+        // }
         orderer->record_solution(
                     pos.peek_piece_at(opt_move.from()),\
                     opt_move, depth
                 );
+    }
     #endif
     return opt;
 }
@@ -623,23 +634,24 @@ Score ACDC::Star2_Evaluate(Position pos, Move move, int depth, int remain_moves,
             
 
 
-            remain_hidden_pieces[color][piecetype]--;
-            remain_hidden_pieces_number--;
 
 
             Position pos_branch(pos_copy);
             MoveList<> branch_moves(pos_branch);
 
             Move prediction_move = orderer->predict_optimal_move(pos_branch, branch_moves, false, true);
-            if(prediction_move.type() == Moving)
+            if(prediction_move != PAUSE)
                 pos_branch.do_move(prediction_move);
             else
-                pos_branch.pass_turn();
+                continue;
 
             // flipping_piece();
             Score eval;
 
             bool is_attack = pos_copy.peek_piece_at(prediction_move.to()).type != NO_PIECE;
+
+            remain_hidden_pieces[color][piecetype]--;
+            remain_hidden_pieces_number--;
 
             if(depth >= 1)
                 eval = Negamax(pos_branch, depth-2, 30 - is_attack,\
@@ -691,7 +703,7 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
     #ifdef ORDERING
     TT_info* tt_lookup = TT->query(pos, depth);
     if(tt_lookup->depth > 0){
-        debug << "TT opt found:" << tt_lookup->opt_move;
+        // debug << "TT opt found:" << tt_lookup->opt_move;
         for(int i=0; i < nx_moves.size(); i++){
             if(nx_moves[i] == tt_lookup->opt_move){
                 // Move tmp = nx_moves[0];
@@ -703,7 +715,7 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
         }
     }
     else{
-        debug << "TT notfound\n";
+        // debug << "TT notfound\n";
     }
     #endif
     #endif
@@ -714,6 +726,11 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
     #else
     Score opt_score = Move_Evaluate(pos, opt_move, depth-1, remain_moves-1, -CDCEvaluate::score_mx, CDCEvaluate::score_mx);
     #endif
+
+    #ifdef OUT_INFO
+    debug << "branch" << opt_move;
+    debug << "\t score:" << opt_score << '\n';
+    #endif
     for(int i=1; i<nx_moves.size(); i++){
         if(nx_moves[i].type() == Flipping and depth <= 2 and nx_moves[0].type() != Flipping)
             continue;
@@ -723,6 +740,18 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
         #else
         Score move_score = Move_Evaluate(pos, nx_moves[i], depth-1, remain_moves-1, -CDCEvaluate::score_mx, -opt_score);
         #endif
+
+        #ifdef OUT_INFO
+        debug << "branch " << nx_moves[i];
+        debug << "score:" << move_score << '\n';
+        #endif
+
+        #ifdef TIMING
+        if(std::chrono::steady_clock::now() >= deadline)
+            break;
+        #endif
+
+        
         if(move_score > opt_score){
             opt_move = nx_moves[i];
             opt_score = move_score;
@@ -732,7 +761,9 @@ Move ACDC::opt_solution_with_fixed_depth(Position pos, int depth, int remain_mov
         }
     }
 
+    #ifdef OUT_INFO
     debug << "\topt score: " << opt_score << '\n';
+    #endif
 
     #ifdef TT_H
     TT->write(tt_lookup, depth, opt_score, opt_move, true);
@@ -765,13 +796,15 @@ Move ACDC::opt_solution(Position pos, double given_time, int remain_moves){
     Move opt = nx_moves[0];
     orderer->reset_history();
     while(true){
+        #ifdef TIMING
+        if(std::chrono::steady_clock::now() >= deadline)
+            break;
+        #endif
         // reset();
         debug << "depth " << depth <<std::endl;
 
         Move search_solution = opt_solution_with_fixed_depth(pos, depth, remain_moves);
 
-        if(std::chrono::steady_clock::now() >= deadline)
-            break;
         debug << "search finished\n";
         debug << '\t' << search_solution;
         opt = search_solution;

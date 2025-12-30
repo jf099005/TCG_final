@@ -11,11 +11,13 @@ struct TT_info{
     int8_t depth;
     bool is_exact_value;
     Move opt_move;
+    Board pieces_location;
 
     TT_info(){
         score = 1145140;
         depth = -114;
         is_exact_value = false;
+        pieces_location = 0;
     };
 
     TT_info(double s, int d, Move nx, bool flag){

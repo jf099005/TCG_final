@@ -59,7 +59,7 @@ class MoveOrderer{
 };
 
 const int MAX_DEPTH = 100;
-const int TT_bits = 28;
+const int TT_bits = 26;
 
 inline bool cannon_capture(const Position& pos){
     MoveList<> nx_moves(pos, Cannon);
